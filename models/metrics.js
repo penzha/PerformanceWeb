@@ -171,8 +171,6 @@ function getParentType(node) {
 }
 
 function nodeDispatch(node, basename) {
-	console.log('nodeDispatch --- node: ');
-
 	var nodeType = getNodeType(node);
 
 	switch (nodeType) {
@@ -216,7 +214,6 @@ function parseSP(spNode, basename) { //refactory parseSP() and parsePool() to pa
 	//console.log(node);
 
 	var nodes = spNode.object;
-	console.log('parseSP - nodes: ');
 
 	nodes.each(function(i, node) {
 		nodeDispatch(node, basename);
