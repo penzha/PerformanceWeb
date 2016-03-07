@@ -99,10 +99,8 @@ router.post('/', function(req, res) {
     	res.render('index', { title: TITLE}); //?? how to make 'Analyze' button change from gray to ready here?
 
     }
-  });
-
-  console.log('---- 33333');
-});
+  })
+})
 
 router.get('/metrics', function(req, res) {
 	// add logic
