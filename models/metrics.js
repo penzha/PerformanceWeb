@@ -126,26 +126,25 @@ Metrics.ParseXMLAndSaveToDB = function (relXMLFile, callback) {  //move this int
 			var nodes = res.archivedump.archivefile.object.object;
 			var basename = path.basename(relXMLFile, '.nar.rel.xml');
 			console.log('basename: ', basename);
-/*
+
 			mongodb.open(function(err, db) {
 				if (err) {
+					console.log('mongodb open failed ---', err);
 					return callback(err);
 				}
 
+				console.log('mongodb open ---');
+
 				nodes.each(function(i, node) {
-					nodeDispatch(basename, db, node);
+					nodeDispatch(node, basename);
 				})
-			})
-*/
-			nodes.each(function(i, node) {
-				//nodeDispatch(basename, db, node);
-				nodeDispatch(node, basename);
-			})
 
-			console.log('read file finished');
-			//mongodb.close();
+				console.log('read file finished');
+				mongodb.close();
+				console.log('mongodb closed');
 
-			return callback(null);
+				return callback(null);
+			})
 		})
 	})
 }
