@@ -1,0 +1,91 @@
+<!--  Main Page -->
+
+<% include TB_head %>
+
+  <div id="container" class="container">
+     <% if (locals.success) { %> 
+      <div id="alt_sucess" class="alert alert-success"> 
+      <%- success %> 
+      </div> 
+     <% } %> 
+
+    <% if (locals.error) { %> 
+    <div id="alt_warning" class="alert alert-warning"> 
+      <%= error %> 
+    </div> 
+    <% } %> 
+
+    <form class="form-signin" role="form" method="post" enctype='multipart/form-data'>
+    <h2 class="form-signin-heading">Upload File</h2>
+    <input id="sqlite" name="sqlite" type="file" class="form-control" />	 
+    <br/>
+    <button id="btnsub" class="btn btn-lg btn-primary" type="submit">Upload</button>
+    <button id="analyze" class="btn btn-lg btn-primary" type="button" onclick="window.location.href='/metrics'">Analyze</button>
+    <!-- <button id="analyze" class="btn btn-lg btn-primary" type="button" onclick="window.open('/metrics')">Analyze</button> -->
+    <br/><br/>
+    <!-- <p>Upload file: <%= locals.filename %></p> -->
+    <br/>
+    <!-- <a class="btn btn-primary btn-large" href="/metrics"> Analyze </a> -->
+    <!-- <button id="btnAna" class="btn btn-lg" type="submit" href="/analyze"> Analyze </button> -->
+    <br/>
+    
+    </form>
+    
+  </div> 
+  
+  </body>
+</html>
+
+<script src="../public/javascripts/jquery-1.11.3.min.js" type="text/javascript">
+alert("test");
+   String.prototype.format = function (args) {    <!-- ??? -->
+      var result = this;
+      if (arguments.length > 0) {
+        if (arguments.length == 1 && typeof (args) == "object") {
+          for (var key in args) {
+            if (args[key] != undefined) {
+              var reg = new RegExp("({" + key + "})", "g");
+              result = result.replace(reg, args[key]);
+            }
+          }
+        }
+        else {
+          for (var i = 0; i < arguments.length; i++) {
+            if (arguments[i] != undefined) {
+              var reg = new RegExp("({)" + i + "(})", "g");
+              result = result.replace(reg, arguments[i]);
+            }
+          }
+        }
+      }
+      return result;
+  }
+
+  $(function(){
+    $('#btnSub').on('click',function(){		   
+      var narFileVal = $('#narFile').val(),  
+        errorTip = '<div id="errorTip" class="alert alert-warning">{0}</div> ';  
+
+      $("#errorTip,#alt_warning").remove();
+      
+      if(narFileVal.length == 0)
+      {
+        $("#container").prepend(errorTip.format('Please select a NAR file'));								
+        return false;
+      }
+
+      var extName = narFileVal.substring(narFileVal.lastIndexOf('.'),narFileVal.length).toLowerCase();
+
+      if(extName != '.nar'){
+         $("#container").prepend(errorTip.format('We only accept *.nar file'));							 
+         return false;				
+      }
+      
+      return true;				
+    })
+  });
+
+
+</script>
+
+<% include foot %>

@@ -1,0 +1,13 @@
+		<hr /> 
+		<footer> 
+		<p><a href="/changelog" target="_blank">Penzha</a> 2015-2016</p> 
+		</footer> 
+	</div>
+  </body>
+
+<!-- Bootstrap core JavaScript
+    ================================================== -->
+  <script src="/javascripts/bootstrap.js"></script>
+  <script src="/javascripts/jquery-1.11.3.min.js"></script>
+  
+</html>
