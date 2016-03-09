@@ -67,7 +67,7 @@ Metrics.getSummary = function (csvfile, callback) {
 		
 		db.collection(collectionName, {strict:true}, function(err, collection) {
 			if (err) {
-				mongodb.close();
+				db.close();
 				return callback(err);
 			}
 			
@@ -75,7 +75,7 @@ Metrics.getSummary = function (csvfile, callback) {
 			
 			collection.find().sort(['Poll Time', 1]);
 			collection.find({"Object Name":"SP A"}, {"Poll Time":1, "Utilization (%)":1}).sort({"Poll Time":1}).toArray(function(err, docs) {
-				mongodb.close();
+				db.close();
 
 				console.log('find');
 				console.log(docs);
@@ -136,11 +136,14 @@ Metrics.ParseXMLAndSaveToDB = function (relXMLFile, callback) {  //move this int
 				console.log('mongodb open ---');
 
 				nodes.each(function(i, node) {
-					nodeDispatch(node, basename);
+					nodeDispatch(node, basename, db);
 				})
 
 				console.log('read file finished');
-				mongodb.close();
+				// mongodb.close();  // how to better handle open() and close() here. If we close DB here, insert will report mongo error because of async.
+										// what about mongoose ?
+										// current, we do not close mongodb anymore after it is opened.
+										// one solution is to open db and close db each time when we insert doc. Seems ugly, any other option?
 				console.log('mongodb closed');
 
 				return callback(null);
@@ -169,34 +172,34 @@ function getParentType(node) {
 	return type;
 }
 
-function nodeDispatch(node, basename) {
+function nodeDispatch(node, basename, db) {
 	var nodeType = getNodeType(node);
 
 	switch (nodeType) {
 		case 'SP': // SP
 			console.log('find SP object');
-			parseSP(node, basename);
+			parseSP(node, basename, db);
 			break;
 		case 'Port': // SP -> Port
 			console.log('find Port object in SP node');
-			parsePort(node, basename);
+			parsePort(node, basename, db);
 			// parse port
 			break;
 		case 'Pool': // Pool
 			console.log('find Pool object');
-			parsePool(node, basename);
+			//parsePool(node, basename, db);
 			break;
 		case 'Thin LUN': // SP -> Thin LUN or Pool -> Thin LUN
 			console.log('find Thin LUN object');
-			parseThinLUN(node, basename);
+			//parseThinLUN(node, basename, db);
 			break;
 		case 'Private RAID Group': // Pool -> Private RAID Group
 			console.log('find Private RAID Group object');
-			parsePrivateRAIDGroup(node, basename);
+			//parsePrivateRAIDGroup(node, basename, db);
 			break;
 		case 'Disk': // Pool -> Private RAID Group -> Disk
 			console.log('find Disk object');
-			parseDisk(node, basename);
+			//parseDisk(node, basename, db);
 			break;
 		case 'Celerra Device': // Celerra Device
 			console.log('find celerra device object');
@@ -207,7 +210,7 @@ function nodeDispatch(node, basename) {
 	}
 }
 
-function parseSP(spNode, basename) { //refactory parseSP() and parsePool() to parseParent()
+function parseSP(spNode, basename, db) { //refactory parseSP() and parsePool() to parseParent()
 
 	console.log('function parseSP');
 	//console.log(node);
@@ -215,13 +218,13 @@ function parseSP(spNode, basename) { //refactory parseSP() and parsePool() to pa
 	var nodes = spNode.object;
 
 	nodes.each(function(i, node) {
-		nodeDispatch(node, basename);
+		nodeDispatch(node, basename, db);
 	})
 
 	console.log('parseSP finished');
 }
 
-function parsePool(poolNode,basename) {
+function parsePool(poolNode,basename, db) {
 
 	console.log('function parsePool');
 	//console.log(node);
@@ -229,25 +232,51 @@ function parsePool(poolNode,basename) {
 	var nodes = poolNode.object;
 
 	nodes.each(function(i, node) {
-		nodeDispatch(node, basename);
+		nodeDispatch(node, basename, db);
 	})
 
 	console.log('parsePool finished');
 }
 
-function parsePort(portNode, basename) {
+function parsePort(portNode, basename, db) {
 	console.log('function parsePort');
 
 	var parentName = getParentName(portNode);
-	console.log('Port parent name: ', parentName);
+	var portName = portNode.attributes().name;
+	console.log('Port name: ', portName);
 
 	//insert SP-Port into DB
 	var SPPortTableName = basename + '_Rel_SP-Ports';
 	console.log('SPPortTableName: ', SPPortTableName);
 
+	db.collection(SPPortTableName, function(err, collection) {
+		if (err) {
+			console.log('parsePort - db.collection() failed - ', err);
+			db.close();
+			return;
+		}
+
+		console.log('parsePort - collection: ', collection);
+
+		console.log('find collection - ', SPPortTableName);
+
+		//var doc = [{SP:parentName}, {Port:portName}];
+		//console.log('doc: ', doc);
+
+		collection.insertOne({'SP':parentName, 'Port':portName}, function(err, res) {
+			if (err) {
+				console.log('insert port failed - ', err);
+				db.close();
+				return;
+			}
+
+			console.log('collection.insertOne successfull');
+		})
+	})
+
 }
 
-function parseDisk(diskNode, basename) {
+function parseDisk(diskNode, basename, db) {
 	console.log('function parseDisk');
 
 	var parentType = getParentType(diskNode);
@@ -264,7 +293,7 @@ function parseDisk(diskNode, basename) {
 
 }
 
-function parseThinLUN(thinlunNode, basename) {
+function parseThinLUN(thinlunNode, basename, db) {
 	console.log('function parseThinLUN');
 
 	var parentType = getParentType(thinlunNode);
@@ -280,7 +309,7 @@ function parseThinLUN(thinlunNode, basename) {
 
 }
 
-function parsePrivateRAIDGroup(prgNode, basename) {
+function parsePrivateRAIDGroup(prgNode, basename, db) {
 	console.log('function parsePrivateRAIDGroup');
 
 	var parentName = getParentName(prgNode);

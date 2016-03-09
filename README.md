@@ -34,24 +34,24 @@ db 'performanceviewer' -> table 'APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-
 2. NAR Relation
 db 'performanceviewer' -> 
 	table 'APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-00_Rel_SP-Ports'
-		'SPA' : 'Port#'
+		{SP : 'SPA'}, {Port : 'Port#'}
 		...
-		'SPB' : 'Port#'
+		{SP : 'SPB'}, {Port : 'Port#'}
 		...
 	table 'APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-00_Rel_Pool-Luns'
-		'Pool1 name' : 'Lun# name'
+		{Pool : 'Pool1 name'}, {Lun : 'Lun# name'}
 		...
-		'Pool2 name' : 'Lun# name'
+		{Pool : 'Pool2 name'}, {Lun : 'Lun# name'}
 		...
 	table 'APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-00_Rel_Pool-PRGs'
-		'Pool1 name' : 'PRG# name'
+		{Pool : 'Pool1 name'}, {PRG : 'PRG# name'}
 		...
-		'Pool2 name' : 'PRG# name'
+		{Pool : 'Pool2 name'}, {PRG : 'PRG# name'}
 		...
 	table 'APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-00_Rel_PRG-Disks'
-		'PRG1 name' : 'Disk# name'
+		{PRG : 'PRG1 name'}, {Disk : 'Disk# name'}
 		...
-		'PRG2 name' : 'Disk# name'
+		{PRG : 'PRG2 name'}, {Disk : 'Disk# name'}
 		...
 
 
