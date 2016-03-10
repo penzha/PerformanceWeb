@@ -183,23 +183,22 @@ function nodeDispatch(node, basename, db) {
 		case 'Port': // SP -> Port
 			console.log('find Port object in SP node');
 			parsePort(node, basename, db);
-			// parse port
 			break;
 		case 'Pool': // Pool
 			console.log('find Pool object');
-			//parsePool(node, basename, db);
+			parsePool(node, basename, db);
 			break;
 		case 'Thin LUN': // SP -> Thin LUN or Pool -> Thin LUN
 			console.log('find Thin LUN object');
-			//parseThinLUN(node, basename, db);
+			parseThinLun(node, basename, db);
 			break;
 		case 'Private RAID Group': // Pool -> Private RAID Group
 			console.log('find Private RAID Group object');
-			//parsePrivateRAIDGroup(node, basename, db);
+			parsePrivateRAIDGroup(node, basename, db);
 			break;
 		case 'Disk': // Pool -> Private RAID Group -> Disk
 			console.log('find Disk object');
-			//parseDisk(node, basename, db);
+			parseDisk(node, basename, db);
 			break;
 		case 'Celerra Device': // Celerra Device
 			console.log('find celerra device object');
@@ -239,15 +238,10 @@ function parsePool(poolNode,basename, db) {
 }
 
 function parsePort(portNode, basename, db) {
-	console.log('function parsePort');
-
 	var parentName = getParentName(portNode);
 	var portName = portNode.attributes().name;
-	console.log('Port name: ', portName);
-
-	//insert SP-Port into DB
 	var SPPortTableName = basename + '_Rel_SP-Ports';
-	console.log('SPPortTableName: ', SPPortTableName);
+	console.log('parsePort(): parentName, portName, SPPortTableName - ', parentName, portName, SPPortTableName);
 
 	db.collection(SPPortTableName, function(err, collection) {
 		if (err) {
@@ -256,77 +250,109 @@ function parsePort(portNode, basename, db) {
 			return;
 		}
 
-		console.log('parsePort - collection: ', collection);
-
-		console.log('find collection - ', SPPortTableName);
-
-		//var doc = [{SP:parentName}, {Port:portName}];
-		//console.log('doc: ', doc);
-
+		//console.log('parsePort - collection: ', collection);
 		collection.insertOne({'SP':parentName, 'Port':portName}, {w:1, j:true}, function(err, res) { // {w:1, j:true} has any effect here?
 			if (err) {
 				console.log('insert port failed - ', err);
 				db.close();
 				return;
 			}
-
-			console.log('collection.insertOne successfull');
+			console.log('Port collection.insertOne success');
 		})
 	})
-
 }
 
-function parseThinLUN(thinlunNode, basename, db) {
-	console.log('function parseThinLUN');
-
+function parseThinLun(thinlunNode, basename, db) {
 	var parentType = getParentType(thinlunNode);
 	var parentName = getParentName(thinlunNode);
+	var lunName = thinlunNode.attributes().name;
+	var PoolLunTableName = basename + '_Rel_Pool-Luns';
+	console.log('parseThinLun(): parentName, lunName, PoolLunTableName - ', parentName, lunName, PoolLunTableName);
+
 	if (parentType != 'Pool') {
 		console.log('we do not parse thin lun object under this node: ', parentName);
 		return;
 	}
 
-	//insert Pool - thin lun into DB
-	var PoolLunTableName = basename + '_Rel_Pool-Luns';
-	console.log('PoolLunTableName: ', PoolLunTableName);
+	db.collection(PoolLunTableName, function(err, collection) {
+		if (err) {
+			console.log('parseThinLun - db.collection() failed - ', err);
+			db.close();
+			return;
+		}
 
+		//console.log('parseThinLun - collection: ', collection);
+		collection.insertOne({'Pool':parentName, 'Lun':lunName}, {w:1, j:true}, function(err, res) {
+			if (err) {
+				console.log('insert lun failed - ', err);
+				db.close();
+				return;
+			}
+			console.log('Lun collection.insertOne success');
+		})
+	})
 }
 
 function parsePrivateRAIDGroup(prgNode, basename, db) {
-	console.log('function parsePrivateRAIDGroup');
-
 	var parentName = getParentName(prgNode);
-	console.log('PRG parent name: ', parentName);
+	var prgName = prgNode.attributes().name;
+	var PoolPRGTableName = basename + '_Rel_Pool-PRGs';
+	console.log('parsePrivateRAIDGroup(): parentName, prgName, PoolPRGTableName - ', parentName, prgName, PoolPRGTableName);
 
 	var nodes = prgNode.object;
 
 	nodes.each(function(i, node) {
-		nodeDispatch(node, basename);
+		nodeDispatch(node, basename, db);
 	})
 
-	console.log('parsePRG finished');
+	db.collection(PoolPRGTableName, function(err, collection) {
+		if (err) {
+			console.log('parsePrivateRAIDGroup - db.collection() failed - ', err);
+			db.close();
+			return;
+		}
 
-	//insert Pool - Private RAID Group into DB
-	var PoolPRGTableName = basename + '_Rel_Pool-PRGs';
-	console.log('PoolPRGTableName: ', PoolPRGTableName);
-
+		//console.log('parsePrivateRAIDGroup - collection: ', collection);
+		collection.insertOne({'Pool':parentName, 'PRG':prgName}, {w:1, j:true}, function(err, res) {
+			if (err) {
+				console.log('insert PRG failed - ', err);
+				db.close();
+				return;
+			}
+			console.log('PRG collection.insertOne success');
+		})
+	})
 }
 
 function parseDisk(diskNode, basename, db) {
-	console.log('function parseDisk');
-
 	var parentType = getParentType(diskNode);
 	var parentName = getParentName(diskNode);
+	var diskName = diskNode.attributes().name;
+	var PRGDiskTableName = basename + '_Rel_PRG-Disks';
+	console.log('parseDisk(): parentName, diskName, PRGDiskTableName', parentName, diskName, PRGDiskTableName);
 
 	if (parentType != 'Private RAID Group') {
 		console.log('we do not parse disk object under this node: ', parentName);
 		return;
 	}
 
-	//insert Private RAID Group - Disk into DB
-	var PRGDiskTableName = basename + '_Rel_PRG-Disks';
-	console.log('PRGDiskTableName: ', PRGDiskTableName);
+	db.collection(PRGDiskTableName, function(err, collection) {
+		if (err) {
+			console.log('parseDisk - db.collection() failed - ', err);
+			db.close();
+			return;
+		}
 
+		//console.log('parseDisk - collection: ', collection);
+		collection.insertOne({'PRG':parentName, 'Disk':diskName}, {w:1, j:true}, function(err, res) {
+			if (err) {
+				console.log('insert Disk failed - ', err);
+				db.close();
+				return;
+			}
+			console.log('Disk collection.insertOne success');
+		})
+	})
 }
 
 
