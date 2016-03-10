@@ -263,7 +263,7 @@ function parsePort(portNode, basename, db) {
 		//var doc = [{SP:parentName}, {Port:portName}];
 		//console.log('doc: ', doc);
 
-		collection.insertOne({'SP':parentName, 'Port':portName}, function(err, res) {
+		collection.insertOne({'SP':parentName, 'Port':portName}, {w:1, j:true}, function(err, res) { // {w:1, j:true} has any effect here?
 			if (err) {
 				console.log('insert port failed - ', err);
 				db.close();
@@ -273,23 +273,6 @@ function parsePort(portNode, basename, db) {
 			console.log('collection.insertOne successfull');
 		})
 	})
-
-}
-
-function parseDisk(diskNode, basename, db) {
-	console.log('function parseDisk');
-
-	var parentType = getParentType(diskNode);
-	var parentName = getParentName(diskNode);
-
-	if (parentType != 'Private RAID Group') {
-		console.log('we do not parse disk object under this node: ', parentName);
-		return;
-	}
-
-	//insert Private RAID Group - Disk into DB
-	var PRGDiskTableName = basename + '_Rel_PRG-Disks';
-	console.log('PRGDiskTableName: ', PRGDiskTableName);
 
 }
 
@@ -328,5 +311,23 @@ function parsePrivateRAIDGroup(prgNode, basename, db) {
 	console.log('PoolPRGTableName: ', PoolPRGTableName);
 
 }
+
+function parseDisk(diskNode, basename, db) {
+	console.log('function parseDisk');
+
+	var parentType = getParentType(diskNode);
+	var parentName = getParentName(diskNode);
+
+	if (parentType != 'Private RAID Group') {
+		console.log('we do not parse disk object under this node: ', parentName);
+		return;
+	}
+
+	//insert Private RAID Group - Disk into DB
+	var PRGDiskTableName = basename + '_Rel_PRG-Disks';
+	console.log('PRGDiskTableName: ', PRGDiskTableName);
+
+}
+
 
 /***************************************************************************************************************************************************/
