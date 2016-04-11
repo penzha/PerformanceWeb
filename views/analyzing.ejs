@@ -1,121 +1,145 @@
 <!DOCTYPE html>
 <html>
-  <head>
+
+<head>
     <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">   
        
     <title><%= title %></title>
     
+  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/default/easyui.css">
+  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/icon.css">
+  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/demo.css">
+  <script type="text/javascript" src="/javascripts/easyUI/jquery.min.js"></script>
+  <script type="text/javascript" src="/javascripts/easyUI/jquery.easyui.min.js"></script>
 
-  </head>
+</head>
   
-  <body>
+<body class="easyui-layout">
 
+<div data-options="region:'west',split:true" style="width:400px"> 
+  <div class="easyui-layout" data-options="fit:true">
+    <div data-options="region:'north', collapsible: false, split:true" style="height:400px;padding:5px">
+      <div id="elementsTabs" class="easyui-tabs">
+        <div title="LUN" style="padding:10px">
+          <ul id="lun" data-options="checkbox:true"></ul>
+            <SCRIPT type="text/javascript">
+              $('#lun').tree({
+               data:[{
+                     "id":1,
+                     "text":"SP A",
+                     "children":[{
+                          "text":"Port 0",
+                          },{
+                          "text":"Port 1",
+                          },{
+                          "text":"Port 2",
+                          },{
+                          "text":"Port 3",
+                          },{
+                          "text":"Port 4",
+                          }]
+                    },{
+                    "id":2,
+                         "text":"SP B",
+                         "children":[{
+                         "text":"Port 0"
+                         },{
+                         "text":"Port 1"
+                         },{
+                         "text":"Port 2",
+                         },{
+                         "text":"Port 3",
+                         },{
+                         "text":"Port 4",
+                         }]
+                    }]
+             });
+            </SCRIPT>
+        </div>
+        <div title="Storage Pool" style="padding:10px">
+          <ul id="pool" data-options="checkbox:true"></ul>
+            <SCRIPT type="text/javascript">
+              $('#pool').tree({
+               data:[{
+                     "id":1,
+                     "text":"Folder1",
+                     "iconCls":"icon-save",
+                     "children":[{
+                           "text":"File1",
+                           "checked":true
+                           },{
+                           "text":"Books",
+                           "state":"open",
+                           "attributes":{
+                             "url":"/demo/book/abc",
+                             "price":100
+                           },
+                           "children":[{
+                             "text":"PhotoShop",
+                             "checked":true
+                           },{
+                           "id": 8,
+                           "text":"Sub Bookds",
+                           "state":"closed"
+                         }]
+                         }]
+                    },{
+                         "text":"Languages",
+                         "state":"closed",
+                         "children":[{
+                         "text":"Java"
+                         },{
+                         "text":"C#"
+                         }]
+                    }]
+             });
+            </SCRIPT>
+        </div>
+        <div title="SP" style="padding:10px">
+          <ul id="SP" data-options="checkbox:true"></ul>
+            <SCRIPT type="text/javascript">
+              $('#SP').tree({
+               data:[{"id":0,"text":"SP A","children":[{"text":"Port 0 [FC; 50:06:01:60:C4:60:26:AB:50:06:01:60:44:60:26:AB ]"}]}]
+             });
+            </SCRIPT>
+        </div>
+      </div>
+ 
+    </div>
 
-<link rel="stylesheet" href="/stylesheets/demo.css" type="text/css">
-<link rel="stylesheet" href="/stylesheets/zTreeStyle.css" type="text/css">
-<script src="/javascripts/jquery-1.11.3.min.js"></script>
-<script src="/javascripts/jquery.ztree.core-3.5.js"></script>
-<script src="/javascripts/jquery.ztree.excheck-3.5.js"></script>
+    <div data-options="region:'center'" title="Attributes" style="padding:5px">
+        <ul id="attr" data-options="checkbox:true"></ul>
+            <SCRIPT type="text/javascript">
+              $('#attr').tree({
+               data:[{
+                     "id":1,
+                     "text":"Folder1",
+                    },{
+                      "text":"Languages",
+                    },{
+                      "text":"..."
+                    }]
+              });
 
+                function getChecked(){
+                  var nodes = $('#attr').tree('getChecked');
+                  var s = '';
+                  for(var i=0; i<nodes.length; i++){
+                    if (s != '') s += ',';
+                    s += nodes[i].text;
+                  }
+                  alert(s);
+                }
 
-  <SCRIPT type="text/javascript">
-    var setting = {
-      check: {
-        enable: true
-      },
-      data: {
-        simpleData: {
-          enable: true
-        }
-      }
-    };
-
-
-    var zElementNodes =[
-      { id:1, pId:0, name:"SPs", nocheck:true, open:true},
-      { id:11, pId:1, name:"SPA", checked:true, open:true},
-      { id:111, pId:11, name:"Ports", nocheck:true, open:true},
-      { id:12, pId:1, name:"SPB", open:true},
-      { id:121, pId:12, name:"Ports", nocheck:true, open:true},
-      { id:2, pId:0, name:"Pools", nocheck:true, open:true},
-      { id:21, pId:2, name:"list pools here", open:true},
-      { id:3, pId:0, name:"luns", nocheck:true, open:true},
-      { id:31, pId:3, name:"list luns here", open:true},
-      { id:4, pId:0, name:"RGs", nocheck:true, open:true},
-      { id:41, pId:4, name:"list RGs here", checked:true, open:true}
-    ];
-
-
-    var zSPAttributeNodes =[
-      {id:1, pId:0, name:"SP attributes1"},
-      {id:2, pId:0, name:"SP attributes2"}
-    ];
-
-    var zPortsAttributeNodes =[
-      {id:1, pId:0, name:"Ports attributes1"},
-      {id:2, pId:0, name:"Ports attributes2"}
-    ];
-
-    var zPoolsAttributeNodes =[
-      {id:1, pId:0, name:"Pools attributes1"},
-      {id:2, pId:0, name:"Pools attributes2"}
-    ];
-
-    var zLunsAttributeNodes =[
-      {id:1, pId:0, name:"Luns attributes1"},
-      {id:2, pId:0, name:"Luns attributes2"}
-    ]; 
-
-    var zRGsAttributeNodes =[
-      {id:1, pId:0, name:"RGs attributes1"},
-      {id:2, pId:0, name:"RGs attributes2"}
-    ]; 
-
-    var code;
-
-    function setCheck() {
-      var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
-      py = $("#py").attr("checked")? "p":"",
-      sy = $("#sy").attr("checked")? "s":"",
-      pn = $("#pn").attr("checked")? "p":"",
-      sn = $("#sn").attr("checked")? "s":"",
-      type = { "Y":py + sy, "N":pn + sn};
-      zTree.setting.check.chkboxType = type;
-      showCode('setting.check.chkboxType = { "Y" : "' + type.Y + '", "N" : "' + type.N + '" };');
-    }
-    function showCode(str) {
-      if (!code) code = $("#code");
-      code.empty();
-      code.append("<li>"+str+"</li>");
-    }
-
-    $(document).ready(function(){
-      $.fn.zTree.init($("#elements"), setting, zElementNodes);
-      $.fn.zTree.init($("#attributes"), setting, zSPAttributeNodes);
-      setCheck();
-      $("#py").bind("change", setCheck);
-      $("#sy").bind("change", setCheck);
-      $("#pn").bind("change", setCheck);
-      $("#sn").bind("change", setCheck);
-    });
-  </SCRIPT>
-
-
-
-<h1>Checkbox Operation</h1>
-<h6>[ File Path: excheck/checkbox.html ]</h6>
-<div class="content_wrap">
-  <div class="zTreeDemoBackground left">
-    <ul id="elements" class="ztree"></ul>
+            </SCRIPT>
+    </div>
   </div>
-
-  <div class="zTreeDemoBackground left">
-    <ul id="attributes" class="ztree"></ul>
-  </div>
-
 </div>
+
+<div data-options="region:'center'" title="Charts">
+           
+</div>
+
 
 </body>
 

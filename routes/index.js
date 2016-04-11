@@ -104,7 +104,8 @@ router.post('/', function(req, res) {
 
 router.get('/metrics', function(req, res) {
 	// add logic
-	Metrics.getSummary(uploadFileName, function(err, narSummary) {
+	//Metrics.getSummary(uploadFileName, function(err, narSummary) {
+	Metrics.getElements(uploadFileName, function(err, narSummary) {	
 		if (err) {
             		//??
             		console.log("getSummary from talbe " + uploadFileName + " failed");
@@ -112,11 +113,17 @@ router.get('/metrics', function(req, res) {
             	}
 
 		console.log('index.js - getSummary callback() ...');
-		
+	
 		// use data model here?
 		var pollTime = [];
 		var utilization = [];
-		
+		var sptree = narSummary.spjson;
+		var pooltree = narSummary.pooljson;
+		var luntree = narSummary.lunjson;
+
+		console.log("index.js - sptree: ", sptree);
+
+		/*
 		for (var i = 0; i < narSummary.documents.length; i++) {
 			console.log('Poll Time[]: ' + narSummary.documents[i]["Poll Time"]);
 			console.log('utilization[]: ' + narSummary.documents[i]["Utilization (%)"]);
@@ -127,12 +134,12 @@ router.get('/metrics', function(req, res) {
 		console.log("=========\n");
 		console.log(pollTime);
 		console.log(utilization);
-		
-		return res.render('metrics', { title: uploadFileName, filename: uploadFileName, pollTime: pollTime, utilization: utilization});
+		*/
+		return res.render('metrics', { title: uploadFileName, Sptree: sptree, Pooltree:pooltree, Luntree:luntree, Pooltree:pooltree, PollTime: pollTime, Utilization: utilization});
 		//return res.render('metrics', { title: "Metrics View!!!"});
-		
+
 	});
-	
+
 	console.log('end of /metrics get');
 });
 

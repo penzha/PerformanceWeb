@@ -15,7 +15,7 @@ Remaining issue:
 	web will show uploaded file name after NAR file uploaded and prompted 'extracting NAR into csv' (progress Bar?)
 	Prompt extract completed after csv ready 
 2. Analyze button to parse csv
-...
+3. mongodb open / close issue? mongoose? we keep mongodb keep open now and do not close it after each insert.
 
 
 ### Tools

@@ -9,13 +9,16 @@ var fs = require('fs');
 
 var execSync = require('child_process').execSync;
 
-function Metrics(documents) {
+function Metrics(sp, pool, lun, documents) {	
 	// define data here. do we need better data model here?
 	//this.pollTime = metrics.pollTime;
 	//this.utilization = metrics.utilization;
 	this.documents = documents;
+	this.spjson = sp;
+	this.pooljson = pool;
+	this.lunjson = lun;
 	
-}
+}	// do we need to separate Elements to a new data model? (elements.js)
 
 module.exports = Metrics;
 
@@ -53,6 +56,173 @@ Metrics.importNAR = function (csvdir, csvfile, callback) {
 };
 
 /***************************************************************************************************************************************************/
+
+// Get relationship data from db and save into JSON
+Metrics.getElements = function(name, callback) {
+	
+
+		console.log("open mongodb in Metrics.getElements()");
+
+		var basename = path.basename(name, '.nar');
+		var spportcollectionname = basename + '_Rel_SP-Ports';
+		var poolluncollectionname = basename + '_Rel_Pool-Luns';
+		var poolprgscollectionname = basename + '_Rel_Pool-PRGs';
+		var prgdiskcollectionname = basename + '_Rel_PRG-Disks';
+
+		var spportjson = null;
+		var poollunjson = null;
+		var poolprgjson = null;
+		var prgdiskjson = null;
+
+	mongodb.open(function(err, db) {
+		if (err) {
+			return callback(err);
+		}
+
+		db.collection(spportcollectionname, {strict:true}, function(err, collection) {
+			if (err) {
+				db.close();
+				return null;
+			}
+			//console.log("db.collection find " + spportcollectionname);
+
+			collection.find().sort({"SP":1, "Port":1}).toArray(function(err, spportjson) {
+				console.log("find() - ", spportcollectionname);
+
+				if (spportjson) {
+					//console.log("spportjson: ", spportjson);
+					//console.log("JSON.stringify(): ", JSON.stringify(spportjson));
+					//return JSON.stringify(docs);
+
+					// next -
+					db.collection(poolluncollectionname, {strict:true}, function(err, collection) {
+						if (err) {
+							db.close();
+							return null;
+						}
+						//console.log("db.collection find " + poolluncollectionname);
+
+						collection.find().toArray(function(err, poollunjson) {
+							console.log("find() - ", poolluncollectionname);
+
+							if (poollunjson) {
+								//console.log("spportjson: ", spportjson);
+								//console.log("poollunjson: ", poollunjson);
+								db.collection(poolprgscollectionname, {strict:true}, function(err, collection) {
+									if (err) {
+										db.close();
+										return null;
+									}
+									collection.find().toArray(function(err, poolprgjson) {
+										console.log("find() - ", poolprgscollectionname);
+
+										if (poolprgjson) {
+											db.collection(prgdiskcollectionname, {strict:true}, function(err, collection) {
+												if (err) {
+													db.close();
+													return null;
+												}
+												collection.find().toArray(function(err, prgdiskjson) {
+													console.log("find() - ", prgdiskcollectionname);
+
+													if (prgdiskjson) {
+														console.log("spportjson: ", spportjson);
+														console.log("poollunjson: ", poollunjson);
+														console.log("poolprgjson: ", poolprgjson);
+														console.log("prgdiskjson: ", prgdiskjson);
+
+														var sptreejson = CombineSPJSON(spportjson);
+														var pooltreejson = CombinePoolJSON(poollunjson, poolprgjson, prgdiskjson);
+														var luntreejson = combineLunJSON(poollunjson);
+
+														if (sptreejson && pooltreejson && luntreejson) {
+															var metrics = new Metrics(sptreejson, pooltreejson, luntreejson, null);
+															console.log("metrics.js - sptreejson: ", sptreejson);
+															console.log("metrics.js - pooltreejson: ", pooltreejson);
+															console.log("metrics.js - luntreejson: ", luntreejson);
+															return callback(err, metrics);
+														} else {
+															console.log("treejson is NULL");
+															return callback(err, null);
+														}
+
+													} else {
+														console.log("prgdiskjson is NULL");
+														return callback(err, null);
+													}
+												})
+											})
+										} else {
+											console.log("poolprgjson is NULL");
+											return callback(err, null);
+										}
+									})
+
+								})
+							} else {
+								console.log("poollunjson is NULL");
+								return callback(err, null);
+							}
+						})
+					})
+					
+				} else {
+					console.log("spportjson is NULL");
+					return callbck(err, null);
+				}
+			})
+		})
+	})
+
+
+
+
+
+}
+
+function CombineSPJSON (port) {
+	console.log("CombineSPJSON()");
+	console.log("portjson length: ", port.length);
+
+	var spjson = "[";
+	var spname = null;
+
+	for (var i = 0; i < port.length; i++) {
+		if (spname == null) {
+			spname = port[i].SP;
+			console.log('get first SP name: ', spname);
+
+			spjson += '{\"id\":'+i+',\"text\":\"'+spname+'\",\"children\":[{\"text\":\"'+port[i].Port+'\",}';
+			console.log(spjson);
+		} else if (spname == port[i].SP) {
+			spjson += ',{\"text\":\"'+port[i].Port+'\",}';
+		} else {
+			spjson += ']},';
+			spname = null;
+		}
+	}
+	spjson += "]}]";
+
+	return spjson;
+
+}
+
+function CombinePoolJSON (lun, prg, disk) {
+	console.log("CombinePoolJSON()");
+
+	return prg;
+
+}
+
+function combineLunJSON (lun) {
+	console.log("combineLunJSON()");
+	console.log("lunjson length: ", lun.length);
+
+	
+
+	return lun;
+
+}
 
 Metrics.getSummary = function (csvfile, callback) {
 	mongodb.open(function(err, db) {
@@ -122,7 +292,11 @@ Metrics.ParseXMLAndSaveToDB = function (relXMLFile, callback) {  //move this int
 
 			console.log('read xml successful');
 
-			// get ports
+			// get subsystem name
+			var subsystemname = res.archivedump.archivefile.object.attributes().name;
+			console.log('subsystem: ', subsystemname);
+
+			// go to the element level we need to iterate
 			var nodes = res.archivedump.archivefile.object.object;
 			var basename = path.basename(relXMLFile, '.nar.rel.xml');
 			console.log('basename: ', basename);
@@ -134,6 +308,9 @@ Metrics.ParseXMLAndSaveToDB = function (relXMLFile, callback) {  //move this int
 				}
 
 				console.log('mongodb open ---');
+
+				// save subsystem
+				saveSubsystem(subsystemname, basename, db);
 
 				nodes.each(function(i, node) {
 					nodeDispatch(node, basename, db);
@@ -235,6 +412,27 @@ function parsePool(poolNode,basename, db) {
 	})
 
 	console.log('parsePool finished');
+}
+
+function saveSubsystem (name, basename, db) {
+	var SubsystemName = basename + '_Rel_SubName';
+
+	db.collection(SubsystemName, function(err, collection) {
+		if (err) {
+			console.log('saveSubsystem - db.collection() failed - ', err);
+			db.close();
+			return;
+		}
+
+		collection.insertOne({'Subsystemname': name}, {w:1, j:true}, function(err, res) {
+			if (err) {
+				console.log('insert subsystemname failed - ', err);
+				db.close();
+				return;
+			}
+			console.log('Subsystemname collection.insertOne success');
+		})
+	})
 }
 
 function parsePort(portNode, basename, db) {
