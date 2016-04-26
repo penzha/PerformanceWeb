@@ -2,103 +2,453 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
+<meta charset="utf-8">
        
-    <title><%= title %></title>
+<title><%= title %></title>
     
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/default/easyui.css">
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/icon.css">
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/demo.css">
-  <script type="text/javascript" src="/javascripts/easyUI/jquery.min.js"></script>
-  <script type="text/javascript" src="/javascripts/easyUI/jquery.easyui.min.js"></script>
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/icon.css">
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/demo/demo.css">
+<script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.min.js"></script>
+<script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.easyui.min.js"></script>
+
 </head>
-  
+
 <body class="easyui-layout">
 
-<div data-options="region:'west',split:true" style="width:400px"> 
-  <div class="easyui-layout" data-options="fit:true">
-    <div data-options="region:'north', collapsible: false, split:true" style="height:400px;padding:5px">
-      <div id="elementsTabs" class="easyui-tabs">
-        <div title="LUN" style="padding:10px">
-          <ul id="lun" data-options="checkbox:true"></ul>
+<script type="text/javascript">
+var attr_selected = [];
+
+$(function() {
+  $('ul[id*="tree"]').each(function() {
+    $(this).tree({
+      checkbox: function(node) {
+        if ((node.attribute != 'RG') && (node.attribute != 'Luns')) {
+          return true;
+        }
+      },
+      cascadeCheck:false,
+      method: 'get',
+      onLoadSuccess: function () {
+        $(this).tree('collapseAll');
+      },
+      onContextMenu: function(e, node) {
+        e.preventDefault();
+        if ((node.attribute == 'Luns') || (node.attribute == 'SP') || (node.attribute == 'RG')) {
+          var tree  = $(this);
+          tree.tree('select', node.target);
+          $('#simplemm').menu('show', {
+            left: e.pageX,
+            top: e.pageY,
+            onClick: function(item) {
+              contextMenuClick(item, tree, node);
+            }
+          })
+        } else if (node.attribute == 'Pool') {
+          var tree  = $(this);
+          tree.tree('select', node.target);
+          $('#poolmm').menu('show', {
+            left: e.pageX,
+            top: e.pageY,
+            onClick: function(item) {
+              contextMenuClick(item, tree, node);
+            }
+          })
+        }
+      },
+      onCheck: function(node, checked) {
+        updateChart();
+      }
+    })
+  });
+
+  $("#attrtree").tree({
+    onLoadSuccess: function() {
+      console.log('attrtree onLoadSuccess');
+      var types = attr_selected;
+      var type_count = types.length;
+
+      for (var i = 0; i < type_count; i++) {
+        var roots = $(this).tree('getRoots');
+
+        console.log('roots.length: ', roots.length);
+        for (var j = 0; j < roots.length; j++) {
+          //console.log('types text: ', types[i].text);
+          //console.log('roots text: ', roots[j].text);
+
+          if (roots[j].text == types[i].text) {
+            $(this).tree('check', roots[j].target);
+            console.log('check node: ', roots[j].text);
+          }
+        }
+      }
+    },
+    onCheck: function(node, checked) {
+      console.log('attrtree onCheck');
+      var types = attr_selected;
+      var typeexist = false;
+
+      if( !checked ) {
+        for (var i in types) {
+          if (types[i].text == node.text) {
+            types.splice(i, 1);
+            //console.log('remove node', node.text);
+            //console.log('attr_selected: ', types);
+            break;
+          }
+        }
+      } else if ( checked ){
+        //$(this).tree('uncheck', types.shift().target);
+
+        for (var j = 0; j < types.length; j++) {
+          if (types[j].text == node.text) 
+            typeexist = true;
+        }
+        
+        if (!typeexist) {
+          types.push(node);
+          //console.log('add node', node.text);
+          //console.log('attr_selected: ', types);
+        }
+      }
+
+      updateChart();
+    }
+  })
+});
+
+/**
+ * update chart
+ */
+
+function updateChart() {
+  var objects = getObjects();
+  var attrs   = getAttrs();
+
+  console.log('objects: ', objects);
+  console.log('attrs: ', attrs);
+  console.log('attr_selected: ', attr_selected);
+
+}
+
+/**
+ * get all checked node of a tree
+ * @param {Object} tree easyui-tree.tree
+ * @return {Array} objects
+ */
+function getObjects(){
+  var trees = [$('#luntree'),$('#pooltree'),$('#sptree')];
+  var selected  = [];
+  
+  for (var i in trees) {
+    var nodes = trees[i].tree('getChecked');
+    for (var j in nodes) {
+      selected.push(nodes[j].text);
+    }
+  }
+  return selected;
+}
+
+function getAttrs(){
+  var tree = $('#attrtree');
+  var selected = [];
+
+  var nodes = tree.tree('getChecked');
+  for (var i in nodes) {
+    selected.push(nodes[i].text);
+  }
+  return selected;
+}
+
+
+/**
+ * in response to on Click contextMenu
+ * @param {Object} item menu selected
+ * @param {Object} tree easyui-tree.tree
+ * @param {Object} node node of contextMenu
+ */
+function contextMenuClick(item, tree, node) {
+  switch(item.text) {
+    case "Collapse":
+      tree.tree('collapse',node.target);
+      break;
+    case "Expand":
+      tree.tree('expand',node.target);
+      break;
+    case "Select All":
+      checkAll(tree, node, "check");
+      break;
+    case "De-select All":
+      checkAll(tree, node, "uncheck");
+      break;
+    case "Select All LUNs":
+      checkAllLuns(tree, node, "check");
+      break;
+    case "De-select All LUNs":
+      checkAllLuns(tree, node, "uncheck");
+      break;
+    case "Select All Disks":
+      checkAllDisks(tree, node, "check");
+      break;
+    case "De-select All Disks":
+      checkAllDisks(tree, node, "uncheck");
+      break;
+  }
+}
+
+/**
+ * check/un-check all children of a node recursively(self not included)
+ * @param {Object} tree easyui-tree.tree
+ * @param {Object} node easyui-tree.tree.node
+ * @param {String} check "check"/"uncheck"
+ */
+function checkAll(tree, node, check) {
+  /*if (tree.tree('isLeaf', node.target)) {
+    tree.tree(check, node.target);
+    return;
+  }
+  else {
+  */
+    var childNodes = tree.tree('getChildren', node.target);
+    for (var i in childNodes) {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  //}
+}
+
+function checkAllLuns(tree, node, check) {
+  var childNodes = tree.tree('getChildren', node.target);
+  for (var i in childNodes) {
+    if (childNodes[i].attribute == 'Lun') {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  }
+}
+
+function checkAllDisks(tree, node, check) {
+  var childNodes = tree.tree('getChildren', node.target);
+  for (var i in childNodes) {
+    if (childNodes[i].attribute == 'Disk') {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  }
+}
+</script>
+
+<div region="west" split="true" border="false" style="width:25%"> 
+  <div class="easyui-layout" fit="true">
+    <div region="north" collapsible="false" split="true" border="false" style="height:50%">
+      <div id="elementsTabs" class="easyui-tabs" justified="true" narrow="true" style="height:100%">
+        <div title="LUN" style="padding:5px">
+          <ul id="luntree"></ul>
             <SCRIPT type="text/javascript">
-              $('#lun').tree({
-               data:[{
-                     "id":1,
-                     "text":"SP A",
-                     "children":[{
-                          "text":"Port 0",
-                          },{
-                          "text":"Port 1",
-                          },{
-                          "text":"Port 2",
-                          },{
-                          "text":"Port 3",
-                          },{
-                          "text":"Port 4",
-                          }]
-                    },{
-                    "id":2,
-                         "text":"SP B",
-                         "children":[{
-                         "text":"Port 0"
-                         },{
-                         "text":"Port 1"
-                         },{
-                         "text":"Port 2",
-                         },{
-                         "text":"Port 3",
-                         },{
-                         "text":"Port 4",
-                         }]
-                    }]
+              $('#luntree').tree({
+                data:<%- Luntree %>,
+                onlyLeafCheck:true,
+                onClick: function(node) {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });
+                }
              });
             </SCRIPT>
         </div>
-        <div title="Storage Pool" style="padding:10px">
-          <ul id="pool" data-options="checkbox:true"></ul>
+        <div title="Storage Pool" style="padding:5px">
+          <ul id="pooltree"></ul>
             <SCRIPT type="text/javascript">
-              $('#pool').tree({
-               data:[{
-                     "id":1,
-                     "text":"Folder1",
-                     "iconCls":"icon-save",
-                     "children":[{
-                           "text":"File1",
-                           "checked":true
-                           },{
-                           "text":"Books",
-                           "state":"open",
-                           "attributes":{
-                             "url":"/demo/book/abc",
-                             "price":100
-                           },
-                           "children":[{
-                             "text":"PhotoShop",
-                             "checked":true
-                           },{
-                           "id": 8,
-                           "text":"Sub Bookds",
-                           "state":"closed"
-                         }]
-                         }]
-                    },{
-                         "text":"Languages",
-                         "state":"closed",
-                         "children":[{
-                         "text":"Java"
-                         },{
-                         "text":"C#"
-                         }]
-                    }]
+              $('#pooltree').tree({
+               data:<%- Pooltree %>,
+               onClick: function(node) {
+                if (node.attribute == 'Pool') {
+                  $('#attrtree').tree({
+                    data:[{
+                        "text":"FAST Cache Read Hits/s"
+                      },{
+                        "text":"FAST Cache Read Misses/s"
+                      },{
+                        "text":"FAST Cache Read Hit Ratio"
+                      },{
+                        "text":"FAST Cache Write Hits/s"
+                      },{
+                        "text":"FAST Cache Write Misses/s"
+                      },{
+                        "text":"FAST Cache Write Hit Ratio"
+                      }]
+                  });                
+                } else if (node.attribute == 'Lun') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });                
+                } else if (node.attribute == 'Disk') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Average Seek Distance (GB)"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });                       
+                }
+               }
              });
             </SCRIPT>
         </div>
-        <div title="SP" style="padding:10px">
-          <ul id="SP" data-options="checkbox:true"></ul>
+        <div title="SP" style="padding:5px">
+          <ul id="sptree"></ul>
             <SCRIPT type="text/javascript">
-              $('#SP').tree({
-               data:<%- Sptree %>
+              $('#sptree').tree({
+               data:<%- Sptree %>,
+               onClick: function(node) {
+                if (node.attribute == 'SP') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"SP Cache Dirty Pages (%)"
+                      },{
+                        "text":"SP Cache Flush Ratio"
+                      },{
+                        "text":"SP Cache MBs Flushed (MB/s)"
+                      },{
+                        "text":"SP Cache High Water Flush On"
+                      },{
+                        "text":"SP Cache Idle Flush On"
+                      },{
+                        "text":"SP Cache Low Water Flush Off"
+                      },{
+                        "text":"SP Write Cache Flushes/s"
+                      },{
+                        "text":"FAST Cache Dirty Pages (%)"
+                      },{
+                        "text":"FAST Cache MBs Flushed (MB/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });
+                } else if (node.attribute == 'Port') {
+                  $('#attrtree').tree({
+                    data:[{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Queue Full Count"
+                      }]
+                  });
+                }
+               }
              });
             </SCRIPT>
         </div>
@@ -106,22 +456,16 @@
  
     </div>
 
-    <div data-options="region:'center'" title="Attributes" style="padding:5px">
-        <ul id="attr" data-options="checkbox:true"></ul>
+    <div region="center" title="Attributes" style="padding:5px">
+        <ul id="attrtree"></ul>
             <SCRIPT type="text/javascript">
-              $('#attr').tree({
-               data:[{
-                     "id":1,
-                     "text":"Folder1",
-                    },{
-                      "text":"Languages",
-                    },{
-                      "text":"..."
-                    }]
+              $('#attrtree').tree({
+               data:[],
+               checkbox: true
               });
 
                 function getChecked(){
-                  var nodes = $('#attr').tree('getChecked');
+                  var nodes = $('#attrtree').tree('getChecked');
                   var s = '';
                   for(var i=0; i<nodes.length; i++){
                     if (s != '') s += ',';
@@ -135,10 +479,25 @@
   </div>
 </div>
 
-<div data-options="region:'center'" title="Charts">
-  <p> SPTree: <%= Sptree %> </p>
-  <p> PoolTreeJSON: <%= JSON.stringify(Pooltree) %> </p>
-  <p> LunTree: <%= JSON.stringify(Luntree) %> </p>           
+<div region="center" title="Charts">
+  <!-- <p> SPTree: <%= Sptree %> </p> -->
+  <!-- <p> LunTree: <%= Luntree %> </p> -->
+  <!-- <p> PoolTree: <%= Pooltree %> </p> -->
+</div>
+
+<div id="simplemm" class="easyui-menu">
+  <!-- <div iconCls="icon-add">Expand</div> -->
+  <!-- <div iconCls="icon-remove">Collapse</div> -->
+  <!-- <div class="menu-sep"></div> -->
+  <div iconCls="icon-ok">Select All</div>
+  <div iconCls="icon-cancel">De-select All</div>
+</div>
+
+<div id="poolmm" class="easyui-menu">
+  <div iconCls="icon-ok">Select All LUNs</div>
+  <div iconCls="icon-cancel">De-select All LUNs</div>
+  <div iconCls="icon-ok">Select All Disks</div>
+  <div iconCls="icon-cancel">De-select All Disks</div>
 </div>
 
 

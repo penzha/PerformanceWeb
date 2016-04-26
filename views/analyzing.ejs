@@ -6,92 +6,125 @@
        
     <title><%= title %></title>
     
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/default/easyui.css">
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/themes/icon.css">
-  <link rel="stylesheet" type="text/css" href="/stylesheets/easyUI/demo.css">
-  <script type="text/javascript" src="/javascripts/easyUI/jquery.min.js"></script>
-  <script type="text/javascript" src="/javascripts/easyUI/jquery.easyui.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/default/easyui.css">
+  <link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/icon.css">
+  <link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/demo/demo.css">
+  <script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.min.js"></script>
+  <script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.easyui.min.js"></script>
 
 </head>
   
 <body class="easyui-layout">
 
-<div data-options="region:'west',split:true" style="width:400px"> 
-  <div class="easyui-layout" data-options="fit:true">
-    <div data-options="region:'north', collapsible: false, split:true" style="height:400px;padding:5px">
-      <div id="elementsTabs" class="easyui-tabs">
+<div region="west" split="true" border="false" style="width:25%"> 
+  <div class="easyui-layout" fit="true">
+    <div region="north" collapsible="false" split="true" border="false" style="height:50%">
+      <div id="elementsTabs" class="easyui-tabs" justified="true" narrow="true" style="height:100%">
         <div title="LUN" style="padding:10px">
           <ul id="lun" data-options="checkbox:true"></ul>
             <SCRIPT type="text/javascript">
               $('#lun').tree({
+               data:[
+                      {
+                      "id":1,
+                      "text":"lun 1",
+                      },{
+                      "id":2,
+                      "text":"lun 2",
+                      },{
+                      "id":3,
+                      "text":"lun 3",
+                      }
+                    ],
+              onClick: function(node) {
+                $('#attr').tree({
                data:[{
                      "id":1,
-                     "text":"SP A",
-                     "children":[{
-                          "text":"Port 0",
-                          },{
-                          "text":"Port 1",
-                          },{
-                          "text":"Port 2",
-                          },{
-                          "text":"Port 3",
-                          },{
-                          "text":"Port 4",
-                          }]
+                     "text":"Folder2",
                     },{
-                    "id":2,
-                         "text":"SP B",
-                         "children":[{
-                         "text":"Port 0"
-                         },{
-                         "text":"Port 1"
-                         },{
-                         "text":"Port 2",
-                         },{
-                         "text":"Port 3",
-                         },{
-                         "text":"Port 4",
-                         }]
+                      "text":"Languages1",
+                    },{
+                      "text":"..."
                     }]
+              });
+               },
+               onContextMenu: function(e,node){
+          e.preventDefault();
+          $(this).tree('select',node.target);
+          $('#mm').menu('show',{
+            left: e.pageX,
+            top: e.pageY
+          });
+        }
              });
             </SCRIPT>
         </div>
         <div title="Storage Pool" style="padding:10px">
-          <ul id="pool" data-options="checkbox:true"></ul>
+          <ul id="pool"></ul>
             <SCRIPT type="text/javascript">
               $('#pool').tree({
-               data:[{
-                     "id":1,
-                     "text":"Folder1",
-                     "iconCls":"icon-save",
-                     "children":[{
-                           "text":"File1",
-                           "checked":true
-                           },{
-                           "text":"Books",
-                           "state":"open",
-                           "attributes":{
-                             "url":"/demo/book/abc",
-                             "price":100
-                           },
-                           "children":[{
-                             "text":"PhotoShop",
-                             "checked":true
-                           },{
-                           "id": 8,
-                           "text":"Sub Bookds",
-                           "state":"closed"
-                         }]
-                         }]
-                    },{
-                         "text":"Languages",
-                         "state":"closed",
-                         "children":[{
-                         "text":"Java"
-                         },{
-                         "text":"C#"
-                         }]
-                    }]
+               data:[
+  {
+  "id":1,
+  "text":"Pool 0",
+  "attribute":"Pool",
+  "children":[
+    {
+    "text":"lun 1",
+    "attribute":"Lun"
+    },{
+    "text":"lun 2",
+    "attribute":"Lun"
+    },{
+    "text":"RG 1",
+    "state": "closed",
+    "children":[{
+      "text":"disk 1",
+      "attribute":"Disk"
+      },{
+      "text":"disk 2",
+      "attribute":"Disk"
+      }]  
+    },{
+    "text":"RG 2",
+    "children":[{
+      "text":"disk 1",
+      "attribute":"Disk"
+      },{
+      "text":"disk 2",
+      "attribute":"Disk"
+      }]
+    }]
+  },{
+  "id":2,
+  "text":"Pool 1",
+  "children":[
+    {
+    "text":"lun 1"
+    },{
+    "text":"lun 2"  
+    },{
+    "text":"RG 1",
+    "children":[{
+      "text":"disk 1"
+      },{
+      "text":"disk 2"
+      }]  
+    },{
+    "text":"RG 2",
+    "children":[{
+      "text":"disk 1"
+      },{
+      "text":"disk 2"
+      }]
+    }]
+  }
+],
+checkbox: function(node) {
+  if (node.id != 1) {
+    return true;
+  }
+}
              });
             </SCRIPT>
         </div>
@@ -99,7 +132,44 @@
           <ul id="SP" data-options="checkbox:true"></ul>
             <SCRIPT type="text/javascript">
               $('#SP').tree({
-               data:[{"id":0,"text":"SP A","children":[{"text":"Port 0 [FC; 50:06:01:60:C4:60:26:AB:50:06:01:60:44:60:26:AB ]"}]}]
+               data:[{
+                     "id":1,
+                     "text":"SP A",
+           "attribute":"SP",
+                     "children":[{
+                           "text":"Port 0",
+               "attribute":"Port"
+                           },{
+                           "text":"Port 1",
+               "attribute":"Port"
+                           },{
+               "text":"Port 2",
+               "attribute":"Port"
+               },{
+               "text":"Port 3",
+               "attribute":"Port"
+               },{
+               "text":"Port 4",
+               "attribute":"Port"
+               }]
+                    },{
+            "id":2,
+                         "text":"SP B",
+             "attribute":"Port",
+                         "children":[{
+                         "text":"Port 0",
+             "attribute":"Port"
+                         },{
+                         "text":"Port 1",
+             "attribute":"Port"
+                         },{
+             "text":"Port 3",
+             "attribute":"Port"
+             },{
+             "text":"Port 4",
+             "attribute":"Port"
+             }]
+                    }]
              });
             </SCRIPT>
         </div>
@@ -140,6 +210,13 @@
            
 </div>
 
+<div id="mm" class="easyui-menu">
+  <div iconCls="icon-add">Expand</div>
+  <div iconCls="icon-remove">Collapse</div>
+  <div class="menu-sep"></div>
+  <div iconCls="icon-ok">Select All</div>
+  <div iconCls="icon-cancel">De-select All</div>
+</div>
 
 </body>
 

@@ -121,7 +121,7 @@ router.get('/metrics', function(req, res) {
 		var pooltree = narSummary.pooljson;
 		var luntree = narSummary.lunjson;
 
-		console.log("index.js - sptree: ", sptree);
+		//console.log("index.js - sptree: ", sptree);
 
 		/*
 		for (var i = 0; i < narSummary.documents.length; i++) {

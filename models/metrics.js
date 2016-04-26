@@ -57,6 +57,9 @@ Metrics.importNAR = function (csvdir, csvfile, callback) {
 
 /***************************************************************************************************************************************************/
 
+// !! Test another way to generate json for easyui. get needed data from mongodb and append it to json.
+// !! such as json = (get pool#'s luns from db') + for (get pool#'s PRG from db + for (get PRG#'s 'disk from db))
+
 // Get relationship data from db and save into JSON
 Metrics.getElements = function(name, callback) {
 	
@@ -87,7 +90,7 @@ Metrics.getElements = function(name, callback) {
 			//console.log("db.collection find " + spportcollectionname);
 
 			collection.find().sort({"SP":1, "Port":1}).toArray(function(err, spportjson) {
-				console.log("find() - ", spportcollectionname);
+				//console.log("find() - ", spportcollectionname);
 
 				if (spportjson) {
 					//console.log("spportjson: ", spportjson);
@@ -102,8 +105,8 @@ Metrics.getElements = function(name, callback) {
 						}
 						//console.log("db.collection find " + poolluncollectionname);
 
-						collection.find().toArray(function(err, poollunjson) {
-							console.log("find() - ", poolluncollectionname);
+						collection.find().sort({"Pool":1, "Lun":1}).toArray(function(err, poollunjson) {
+							//console.log("find() - ", poolluncollectionname);
 
 							if (poollunjson) {
 								//console.log("spportjson: ", spportjson);
@@ -113,8 +116,8 @@ Metrics.getElements = function(name, callback) {
 										db.close();
 										return null;
 									}
-									collection.find().toArray(function(err, poolprgjson) {
-										console.log("find() - ", poolprgscollectionname);
+									collection.find().sort({"Pool":1, "PRG":1}).toArray(function(err, poolprgjson) {
+										//console.log("find() - ", poolprgscollectionname);
 
 										if (poolprgjson) {
 											db.collection(prgdiskcollectionname, {strict:true}, function(err, collection) {
@@ -122,24 +125,24 @@ Metrics.getElements = function(name, callback) {
 													db.close();
 													return null;
 												}
-												collection.find().toArray(function(err, prgdiskjson) {
-													console.log("find() - ", prgdiskcollectionname);
+												collection.find().sort({"PRG":1, "Disk":1}).toArray(function(err, prgdiskjson) {
+													//console.log("find() - ", prgdiskcollectionname);
 
 													if (prgdiskjson) {
-														console.log("spportjson: ", spportjson);
-														console.log("poollunjson: ", poollunjson);
-														console.log("poolprgjson: ", poolprgjson);
-														console.log("prgdiskjson: ", prgdiskjson);
+														//console.log("spportjson: ", spportjson);
+														//console.log("poollunjson: ", poollunjson);
+														//console.log("poolprgjson: ", poolprgjson);
+														//console.log("prgdiskjson: ", prgdiskjson);
 
-														var sptreejson = CombineSPJSON(spportjson);
-														var pooltreejson = CombinePoolJSON(poollunjson, poolprgjson, prgdiskjson);
-														var luntreejson = combineLunJSON(poollunjson);
+														var sptree = CombineSPFormat(spportjson);
+														var pooltree = CombinePoolFormat(poollunjson, poolprgjson, prgdiskjson);
+														var luntree = combineLunFormat(poollunjson);
 
-														if (sptreejson && pooltreejson && luntreejson) {
-															var metrics = new Metrics(sptreejson, pooltreejson, luntreejson, null);
-															console.log("metrics.js - sptreejson: ", sptreejson);
-															console.log("metrics.js - pooltreejson: ", pooltreejson);
-															console.log("metrics.js - luntreejson: ", luntreejson);
+														if (sptree && pooltree && luntree) {
+															var metrics = new Metrics(sptree, pooltree, luntree, null);
+															//console.log("metrics.js - sptree: ", sptree);
+															//console.log("metrics.js - pooltree: ", pooltree);
+															//console.log("metrics.js - luntree: ", luntree);
 															return callback(err, metrics);
 														} else {
 															console.log("treejson is NULL");
@@ -173,56 +176,139 @@ Metrics.getElements = function(name, callback) {
 			})
 		})
 	})
+}
 
+function combineLunFormat (lun) {
+	//console.log("combineLunJSON()");
+	//console.log("lunjson length: ", lun.length);
 
+	var lunformat = '[{\"text\":\"Luns\",\"attribute\":\"Luns\",\"children\":[';
+	var stub = null;
 
+	for (var i = 0; i < lun.length; i++) {
+		if (stub == null) {
+			lunformat += '{\"id\":'+i+',\"text\":\"'+lun[i].Lun+'\"}'
+			stub = lun[i].Pool;
+		} else {
+			lunformat += ',{\"id\":'+i+',\"text\":\"'+lun[i].Lun+'\"}';
+		}
+	}
+	lunformat += ']}]';
 
+	return lunformat;
 
 }
 
-function CombineSPJSON (port) {
-	console.log("CombineSPJSON()");
-	console.log("portjson length: ", port.length);
+function CombineSPFormat (port) {
+	//console.log("CombineSPJSON()");
+	//console.log("portjson length: ", port.length);
 
-	var spjson = "[";
+	var spformat = '[';
 	var spname = null;
 
 	for (var i = 0; i < port.length; i++) {
 		if (spname == null) {
 			spname = port[i].SP;
-			console.log('get first SP name: ', spname);
+			//console.log('get first SP name: ', spname);
 
-			spjson += '{\"id\":'+i+',\"text\":\"'+spname+'\",\"children\":[{\"text\":\"'+port[i].Port+'\",}';
-			console.log(spjson);
+			spformat += '{\"id\":'+i+',\"text\":\"'+spname+'\",\"attribute\":\"SP\",\"children\":[{\"text\":\"'+port[i].Port+'\",\"attribute\":\"Port\"}';
+			//console.log(spjson);
 		} else if (spname == port[i].SP) {
-			spjson += ',{\"text\":\"'+port[i].Port+'\",}';
+			spformat += ',{\"text\":\"'+port[i].Port+'\",\"attribute\":\"Port\"}';
 		} else {
-			spjson += ']},';
+			spformat += ']},';
 			spname = null;
+			i--;	//strick!!
 		}
 	}
-	spjson += "]}]";
+	spformat += ']}]';
 
-	return spjson;
-
-}
-
-function CombinePoolJSON (lun, prg, disk) {
-	console.log("CombinePoolJSON()");
-
-	return prg;
+	return spformat;
 
 }
 
-function combineLunJSON (lun) {
-	console.log("combineLunJSON()");
-	console.log("lunjson length: ", lun.length);
+function CombinePoolFormat (lun, prg, disk) {	//whether mongodb has any way to get data from multiple table and combine them together like this function did ?
+	//console.log("CombinePoolJSON()");
 
-	
+	var poolformat = '[';
+	var poolname = null;
+	var prgname = null;
+	var lunstub = null;
+	var prgstub = null;	//used for special process for first children node
 
-	return lun;
+	for (var i = 0; i < prg.length; i++) {
+		if (poolname == null) {	// specific pool's first PRG
+			poolname = prg[i].Pool;
+			prgname = prg[i].PRG;
+			//console.log('get first PRG in Pool: ', prgname, poolname);
 
+			poolformat += '{\"id\":'+i+',\"text\":\"'+poolname+'\",\"attribute\":\"Pool\",\"children\":[';
+
+			// add pool luns
+			for (var k = 0; k < lun.length; k++) {
+				if (poolname == lun[k].Pool) {
+					if (lunstub == null) {
+						lunstub = lun[k].Lun;
+						poolformat += '{\"text\":\"'+lun[k].Lun+'\",\"attribute\":\"Lun\"}';
+					} else if (poolname == lun[k].Pool) {
+						poolformat += ',{\"text\":\"'+lun[k].Lun+'\",\"attribute\":\"Lun\"}';
+					}
+				}
+			}
+
+			for (var j = 0; j < disk.length; j++) {
+				if (prgname == disk[j].PRG) {
+					if (prgstub == null) {
+						prgstub = disk[j].PRG;
+						//console.log('get first PRG name in pool: ', prgstub);
+
+						poolformat += ',{\"text\":\"'+prgname+'\",\"attribute\":\"RG\",\"state\":\'closed\',\"children\":[{\"text\":\"'+disk[j].Disk+'\",\"attribute\":\"Disk\"}';
+					} else if (prgname == disk[j].PRG) {
+						//console.log('insert disk');
+						poolformat += ',{\"text\":\"'+disk[j].Disk+'\",\"attribute\":\"Disk\"}';
+					}
+				}
+			}
+
+			poolformat += ']}';
+			prgstub = null;
+			lunstub = null;
+
+		} else if (poolname == prg[i].Pool) {	// specific pool's other PRGs
+			prgname = prg[i].PRG;
+			//console.log('get PRG in Pool: ', prgname, poolname);
+
+			for (var j = 0; j < disk.length; j++) {
+				if (prgname == disk[j].PRG) {
+					if (prgstub == null) {
+						prgstub = disk[j].PRG;
+						//console.log('get PRG name: ', prgstub);
+
+						poolformat += ',{\"text\":\"'+prgname+'\",\"attribute\":\"RG\",\"state\":\'closed\',\"children\":[{\"text\":\"'+disk[j].Disk+'\",\"attribute\":\"Disk\"}';
+					} else if (prgname == disk[j].PRG) {
+						//console.log('insert disk');
+						poolformat += ',{\"text\":\"'+disk[j].Disk+'\",\"attribute\":\"Disk\"}';
+					}
+				}
+			}
+
+			poolformat += ']}';
+			prgstub = null;
+
+
+		} else {
+			poolformat += ']},';
+			poolname = null;
+			i--;
+		}
+	}
+
+	poolformat += ']}]';
+
+	return poolformat;
 }
+
+
 
 Metrics.getSummary = function (csvfile, callback) {
 	mongodb.open(function(err, db) {
@@ -287,8 +373,8 @@ Metrics.ParseXMLAndSaveToDB = function (relXMLFile, callback) {  //move this int
 				return callback(err);
 			}
 
-			console.log(res);
-			console.log(res.archivedump.archivefile.object.object.at(1).attributes().type);
+			//console.log(res);
+			//console.log(res.archivedump.archivefile.object.object.at(1).attributes().type);
 
 			console.log('read xml successful');
 
@@ -354,31 +440,31 @@ function nodeDispatch(node, basename, db) {
 
 	switch (nodeType) {
 		case 'SP': // SP
-			console.log('find SP object');
+			//console.log('find SP object');
 			parseSP(node, basename, db);
 			break;
 		case 'Port': // SP -> Port
-			console.log('find Port object in SP node');
+			//console.log('find Port object in SP node');
 			parsePort(node, basename, db);
 			break;
 		case 'Pool': // Pool
-			console.log('find Pool object');
+			//console.log('find Pool object');
 			parsePool(node, basename, db);
 			break;
 		case 'Thin LUN': // SP -> Thin LUN or Pool -> Thin LUN
-			console.log('find Thin LUN object');
+			//console.log('find Thin LUN object');
 			parseThinLun(node, basename, db);
 			break;
 		case 'Private RAID Group': // Pool -> Private RAID Group
-			console.log('find Private RAID Group object');
+			//console.log('find Private RAID Group object');
 			parsePrivateRAIDGroup(node, basename, db);
 			break;
 		case 'Disk': // Pool -> Private RAID Group -> Disk
-			console.log('find Disk object');
+			//console.log('find Disk object');
 			parseDisk(node, basename, db);
 			break;
 		case 'Celerra Device': // Celerra Device
-			console.log('find celerra device object');
+			//console.log('find celerra device object');
 			break;
 		default:
 			console.log('unsupported node: ', nodeType);
@@ -388,7 +474,7 @@ function nodeDispatch(node, basename, db) {
 
 function parseSP(spNode, basename, db) { //refactory parseSP() and parsePool() to parseParent()
 
-	console.log('function parseSP');
+	//console.log('function parseSP');
 	//console.log(node);
 
 	var nodes = spNode.object;
@@ -397,12 +483,12 @@ function parseSP(spNode, basename, db) { //refactory parseSP() and parsePool() t
 		nodeDispatch(node, basename, db);
 	})
 
-	console.log('parseSP finished');
+	//console.log('parseSP finished');
 }
 
 function parsePool(poolNode,basename, db) {
 
-	console.log('function parsePool');
+	//console.log('function parsePool');
 	//console.log(node);
 
 	var nodes = poolNode.object;
@@ -411,7 +497,7 @@ function parsePool(poolNode,basename, db) {
 		nodeDispatch(node, basename, db);
 	})
 
-	console.log('parsePool finished');
+	//console.log('parsePool finished');
 }
 
 function saveSubsystem (name, basename, db) {
@@ -430,7 +516,7 @@ function saveSubsystem (name, basename, db) {
 				db.close();
 				return;
 			}
-			console.log('Subsystemname collection.insertOne success');
+			//console.log('Subsystemname collection.insertOne success');
 		})
 	})
 }
@@ -439,7 +525,7 @@ function parsePort(portNode, basename, db) {
 	var parentName = getParentName(portNode);
 	var portName = portNode.attributes().name;
 	var SPPortTableName = basename + '_Rel_SP-Ports';
-	console.log('parsePort(): parentName, portName, SPPortTableName - ', parentName, portName, SPPortTableName);
+	//console.log('parsePort(): parentName, portName, SPPortTableName - ', parentName, portName, SPPortTableName);
 
 	db.collection(SPPortTableName, function(err, collection) {
 		if (err) {
@@ -455,7 +541,7 @@ function parsePort(portNode, basename, db) {
 				db.close();
 				return;
 			}
-			console.log('Port collection.insertOne success');
+			//console.log('Port collection.insertOne success');
 		})
 	})
 }
@@ -465,7 +551,7 @@ function parseThinLun(thinlunNode, basename, db) {
 	var parentName = getParentName(thinlunNode);
 	var lunName = thinlunNode.attributes().name;
 	var PoolLunTableName = basename + '_Rel_Pool-Luns';
-	console.log('parseThinLun(): parentName, lunName, PoolLunTableName - ', parentName, lunName, PoolLunTableName);
+	//console.log('parseThinLun(): parentName, lunName, PoolLunTableName - ', parentName, lunName, PoolLunTableName);
 
 	if (parentType != 'Pool') {
 		console.log('we do not parse thin lun object under this node: ', parentName);
@@ -486,7 +572,7 @@ function parseThinLun(thinlunNode, basename, db) {
 				db.close();
 				return;
 			}
-			console.log('Lun collection.insertOne success');
+			//console.log('Lun collection.insertOne success');
 		})
 	})
 }
@@ -495,7 +581,7 @@ function parsePrivateRAIDGroup(prgNode, basename, db) {
 	var parentName = getParentName(prgNode);
 	var prgName = prgNode.attributes().name;
 	var PoolPRGTableName = basename + '_Rel_Pool-PRGs';
-	console.log('parsePrivateRAIDGroup(): parentName, prgName, PoolPRGTableName - ', parentName, prgName, PoolPRGTableName);
+	//console.log('parsePrivateRAIDGroup(): parentName, prgName, PoolPRGTableName - ', parentName, prgName, PoolPRGTableName);
 
 	var nodes = prgNode.object;
 
@@ -517,7 +603,7 @@ function parsePrivateRAIDGroup(prgNode, basename, db) {
 				db.close();
 				return;
 			}
-			console.log('PRG collection.insertOne success');
+			//console.log('PRG collection.insertOne success');
 		})
 	})
 }
@@ -527,7 +613,7 @@ function parseDisk(diskNode, basename, db) {
 	var parentName = getParentName(diskNode);
 	var diskName = diskNode.attributes().name;
 	var PRGDiskTableName = basename + '_Rel_PRG-Disks';
-	console.log('parseDisk(): parentName, diskName, PRGDiskTableName', parentName, diskName, PRGDiskTableName);
+	//console.log('parseDisk(): parentName, diskName, PRGDiskTableName', parentName, diskName, PRGDiskTableName);
 
 	if (parentType != 'Private RAID Group') {
 		console.log('we do not parse disk object under this node: ', parentName);
@@ -548,7 +634,7 @@ function parseDisk(diskNode, basename, db) {
 				db.close();
 				return;
 			}
-			console.log('Disk collection.insertOne success');
+			//console.log('Disk collection.insertOne success');
 		})
 	})
 }
