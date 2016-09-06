@@ -1,151 +1,644 @@
+<!DOCTYPE html>
+<html>
 
-<!-- <link rel="stylesheet" type="text/css" href="stylesheets/bootstrap.min.css" /> -->
-<!-- <link rel="stylesheet" type="text/css" href="stylesheets/style.css" /> -->
-<!-- <link rel="stylesheet" href="/stylesheets/demo.css" type="text/css" /> -->
+<head>
+<meta charset="utf-8">
+       
+<title><%= title %></title>
+    
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/default/easyui.css">
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/themes/icon.css">
+<link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/demo/demo.css">
+<script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.min.js"></script>
+<script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="/javascripts/highcharts/highcharts.js"></script>
 
+<script src="/javascripts/highcharts/modules/exporting.js" type="text/javascript"></script> 
 
-<p id = "filename"> Upload File: <%= filename %></p>
-<p id = "pollTime"> Poll Time: <%= pollTime %></p>
-<p id = "utilization"> SPA Utilization: <%= utilization %> </p>
+</head>
 
+<body class="easyui-layout">
 
-<!-- Select box -->
-<link rel="stylesheet" href="/stylesheets/zTreeStyle.css" type="text/css" />
-<script src="/javascripts/jquery-1.11.3.min.js"></script>
-<script src="/javascripts/jquery.ztree.core-3.5.js"></script>
-<script src="/javascripts/jquery.ztree.excheck-3.5.js"></script>
+<script type="text/javascript">
+var attr_selected = []; // attributes selected
+var time = <%- JSON.stringify(PollTime) %>;  // NAR file poll time
 
- <SCRIPT type="text/javascript">
-    var setting = {
-      check: {
-        enable: true
+$(function() {
+  // get time stamps from NAR file
+  $('ul[id*="tree"]').each(function() {
+    $(this).tree({
+      checkbox: function(node) {
+        if ((node.attribute != 'RG') && (node.attribute != 'Luns')) {
+          return true;
+        }
       },
-      data: {
-        simpleData: {
-          enable: true
+      cascadeCheck:false,
+      method: 'get',
+      onLoadSuccess: function () {
+        $(this).tree('collapseAll');
+      },
+      onContextMenu: function(e, node) {
+        e.preventDefault();
+        if ((node.attribute == 'Luns') || (node.attribute == 'SP') || (node.attribute == 'RG')) {
+          var tree  = $(this);
+          tree.tree('select', node.target);
+          $('#simplemm').menu('show', {
+            left: e.pageX,
+            top: e.pageY,
+            onClick: function(item) {
+              contextMenuClick(item, tree, node);
+            }
+          })
+        } else if (node.attribute == 'Pool') {
+          var tree  = $(this);
+          tree.tree('select', node.target);
+          $('#poolmm').menu('show', {
+            left: e.pageX,
+            top: e.pageY,
+            onClick: function(item) {
+              contextMenuClick(item, tree, node);
+            }
+          })
+        }
+      },
+      onCheck: function(node, checked) {
+        updateChart('container')      }
+    })
+  });
+
+  $("#attrtree").tree({
+    onLoadSuccess: function() {
+      console.log('attrtree onLoadSuccess');
+      var attrs = attr_selected;
+      var attrs_count = attrs.length;
+
+      for (var i = 0; i < attrs_count; i++) {
+        var roots = $(this).tree('getRoots');
+
+        console.log('roots.length: ', roots.length);
+        for (var j = 0; j < roots.length; j++) {
+          //console.log('attrs text: ', attrs[i].text);
+          //console.log('roots text: ', roots[j].text);
+
+          if (roots[j].text == attrs[i]) {
+            $(this).tree('check', roots[j].target);
+            console.log('check node: ', roots[j].text);
+          }
         }
       }
-    };
+    },
+    onCheck: function(node, checked) {
+      console.log('attrtree onCheck');
+      var attrs = attr_selected;
+      var typeexist = false;
 
-    var zElementNodes =[
-      { id:1, pId:0, name:"SPs", nocheck:true, open:true},
-      { id:11, pId:1, name:"SPA", checked:true, open:true},
-      { id:111, pId:11, name:"Ports", nocheck:true, open:true},
-      { id:12, pId:1, name:"SPB", open:true},
-      { id:121, pId:12, name:"Ports", nocheck:true, open:true},
-      { id:2, pId:0, name:"Pools", nocheck:true, open:true},
-      { id:21, pId:2, name:"list pools here", open:true},
-      { id:3, pId:0, name:"luns", nocheck:true, open:true},
-      { id:31, pId:3, name:"list luns here", open:true},
-      { id:4, pId:0, name:"RGs", nocheck:true, open:true},
-      { id:41, pId:4, name:"list RGs here", checked:true, open:true}
-    ];
+      if( !checked ) {
+        console.log('attr uncheck');
+        for (var i = 0; i < attrs.length; i++) {
+          //console.log('attrs[i]: ', attrs[i]);
+          //console.log('node.text: ', node.text);
+          if (attrs[i] == node.text) {
+            attrs.splice(i, 1);
+            //console.log('remove node', node.text);
+            console.log('attr_selected: ', attr_selected);
+            break;
+          }
+        }
+      } else if ( checked ){
+        //$(this).tree('uncheck', attrs.shift().target);
 
-    var zSPAttributeNodes =[
-      {id:1, pId:0, name:"SP attributes1"},
-      {id:2, pId:0, name:"SP attributes2"}
-    ];
+        for (var j = 0; j < attrs.length; j++) {
+          if (attrs[j] == node.text) 
+            typeexist = true;
+        }
+        
+        if (!typeexist) {
+          attrs.push(node.text);  // we only save node.text into global variable!
+          console.log('add node', node.text);
+        }
+        console.log('attr_selected: ', attrs);
+      }
 
-    var zPortsAttributeNodes =[
-      {id:1, pId:0, name:"Ports attributes1"},
-      {id:2, pId:0, name:"Ports attributes2"}
-    ];
-
-    var zPoolsAttributeNodes =[
-      {id:1, pId:0, name:"Pools attributes1"},
-      {id:2, pId:0, name:"Pools attributes2"}
-    ];
-
-    var zLunsAttributeNodes =[
-      {id:1, pId:0, name:"Luns attributes1"},
-      {id:2, pId:0, name:"Luns attributes2"}
-    ]; 
-
-    var zRGsAttributeNodes =[
-      {id:1, pId:0, name:"RGs attributes1"},
-      {id:2, pId:0, name:"RGs attributes2"}
-    ]; 
-
-    var code;
-
-    function setCheck() {
-      var zTree = $.fn.zTree.getZTreeObj("treeDemo"),
-      py = $("#py").attr("checked")? "p":"",
-      sy = $("#sy").attr("checked")? "s":"",
-      pn = $("#pn").attr("checked")? "p":"",
-      sn = $("#sn").attr("checked")? "s":"",
-      type = { "Y":py + sy, "N":pn + sn};
-      zTree.setting.check.chkboxType = type;
-      showCode('setting.check.chkboxType = { "Y" : "' + type.Y + '", "N" : "' + type.N + '" };');
+      updateChart('container')
     }
-    function showCode(str) {
-      if (!code) code = $("#code");
-      code.empty();
-      code.append("<li>"+str+"</li>");
+  })
+});
+
+/**
+ * update chart
+ */
+
+function updateChart(container) {
+  var objects = getObjects();
+  //var attrs   = getAttrs();
+  var attrs = attr_selected;
+  var chart;
+
+  console.log('objects: ', objects);
+  console.log('objects: ', objects.toString());
+  console.log('attrs: ', attrs);
+  console.log('attrs: ', attrs.toString());
+
+  console.log('polltime: ', time);
+  //console.log('attr_selected: ', attr_selected);
+  //console.log('attr_selected: ', attr_selected.toString());
+
+  if (0 == attrs.length) {
+    alert('Please select at least one metric attribute!');
+    return 0;
+  } else {
+    // destroy exist chart
+    if ($('#'+container).highcharts()) {
+      console.log('Destroy exist chart');
+      $('#'+container).highcharts().destroy();
     }
 
-    $(document).ready(function(){
-      $.fn.zTree.init($("#elements"), setting, zElementNodes);
-      $.fn.zTree.init($("#attributes"), setting, zSPAttributeNodes);
-      setCheck();
-      $("#py").bind("change", setCheck);
-      $("#sy").bind("change", setCheck);
-      $("#pn").bind("change", setCheck);
-      $("#sn").bind("change", setCheck);
+    // init chart
+    chart = initChart(container, attrs[0]);
+
+    // retrieving data
+    var fetch_size = 10;  // number of objects retrieves each time.
+    for (var i = 0; i * fetch_size < objects.length; i++) {
+      var object_selected = objects.slice(i * fetch_size, (i + 1) * fetch_size);
+
+      //console.log('object_selected: ', object_selected.toString());
+      //console.log('objects: ', objects.toString());
+
+      //var url = "http://192.168.85.131:3000/metrics?objects=" + object_selected.toString() + "&attrs=" + attrs.toString();
+      var url = "http://192.168.85.131:3000/metrics?objects=" + object_selected + "&attrs=" + attrs;
+
+      //add lines in chart
+      addLines(chart, url, i);
+    }
+
+  }
+}
+
+/**
+ * update metric type checkbox tree based on objects selected.
+ * @param {String} container container of chart
+ * @param {String} title title of chart
+ * @param {String} ytitle title of first yAxis
+ * @return {Object} Highcharts.Chart
+ */
+function initChart(container, ytitle) {
+  //$('#summary-table').css("display","none");
+  return new Highcharts.Chart({
+    chart: {
+      renderTo: container,
+      backgroundColor: {
+        linearGradient: [0, 0, 500, 500],
+        stops: [
+          [0, 'rgb(255, 255, 255)'],
+          [1, 'rgb(200, 200, 255)']
+        ]
+      },
+      type: 'line',
+      zoomType: "xy",
+      panning: true,
+      panKey: "shift"
+    },
+    title: {
+      text: 'Performance Chart'
+    },
+    xAxis: {
+      categories: time
+    },
+    yAxis: {
+      min: 0,
+      title: {
+        text: ytitle
+      },
+      id: 'first-axis'
+    },
+    tooltip: {
+      xDateFormat: "%e %b %Y, %H:%M:%S",
+      pointFormat: '<span style="color:{series.color}">●</span> {series.name}<br/>{series.yAxis.options.title.text}: {point.y}'
+    },
+    legend: {
+      backgroundColor: '#C8BFE7',
+      maxHeight: 170,
+      itemMarginTop: 2,
+      itemMarginButtom: 2,
+      itemWidth: 400,
+      itemHiddenStyle: {
+        color: '#7F7F7F'
+      },
+      itemHoverStyle: {
+        color: '#FF7F27'
+      },
+      //borderWidth: 1,
+      labelFormat: '<div style="width: 170px;float: left">{name}</div><div>{yAxis.options.title.text}</div>',
+      useHTML: true
+    },
+    plotOptions: {
+      series: {
+        //pointStart: Date.UTC(time["year"], time["month"], time["day"], time["hour"], time["minute"], time["second"]),
+        //pointInterval: time["interval"] * 1000
+      }
+    },
+    credits: {
+      enabled: false // remove high chart logo hyper-link
+    }
+  });
+
+}
+
+/**
+ * add Lines to chart
+ * @param chart Highchart.chart
+ * @param {String} url series data in JSON
+ */
+function addLines(chart, url, interval) {
+  setTimeout(function() {
+    $.getJSON(url, function (data) {
+      //var tmp = "[{name:'Pool_3', data: [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]}, {name:'Pool_2', data: [34.142952, 34.177093, 32.602308, 25.561682, 34.97002, 34.727382, 32.13746, 24.866517, 27.886792, 26.855924, 20.663539, 28.612271, 45.403027]}]";
+      //var data = {};
+      //data[0] = {'name':'Pool_3', 'data': [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]};
+      //data[1] = {'name':'Pool_2', 'data': [34.142952, 34.177093, 32.602308, 25.561682, 34.97002, 34.727382, 32.13746, 24.866517, 27.886792, 26.855924, 20.663539, 28.612271, 45.403027]};
+      //console.log('tmp: ', data);
+      //var data = JSON.stringify({data: "[44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]"});
+      console.log('getJSON data: ', data);
+      $.each(data, function (i, field) {
+        //var field = JSON.stringify({data: "[44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]"});
+        console.log('field: ', field);
+        //chart.addSeries(field, false);
+        //chart.addSeries({data: [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]}, false);
+        chart.addSeries(field, false);
+      })
+      chart.redraw();
     });
-  </SCRIPT>
+  }, interval*1500);
+}
+
+/**
+ * get all checked node of a tree
+ * @param {Object} tree easyui-tree.tree
+ * @return {Array} objects
+ */
+function getObjects(){
+  var trees = [$('#luntree'),$('#pooltree'),$('#sptree')];
+  var selected  = [];
+  
+  for (var i in trees) {
+    var nodes = trees[i].tree('getChecked');
+    for (var j in nodes) {
+      selected.push(nodes[j].text);
+    }
+  }
+  return selected;
+}
+
+function getAttrs(){
+  var tree = $('#attrtree');
+  var selected = [];
+
+  var nodes = tree.tree('getChecked');
+  for (var i in nodes) {
+    selected.push(nodes[i].text);
+  }
+  return selected;
+}
 
 
+/**
+ * in response to on Click contextMenu
+ * @param {Object} item menu selected
+ * @param {Object} tree easyui-tree.tree
+ * @param {Object} node node of contextMenu
+ */
+function contextMenuClick(item, tree, node) {
+  switch(item.text) {
+    case "Collapse":
+      tree.tree('collapse',node.target);
+      break;
+    case "Expand":
+      tree.tree('expand',node.target);
+      break;
+    case "Select All":
+      checkAll(tree, node, "check");
+      break;
+    case "De-select All":
+      checkAll(tree, node, "uncheck");
+      break;
+    case "Select All LUNs":
+      checkAllLuns(tree, node, "check");
+      break;
+    case "De-select All LUNs":
+      checkAllLuns(tree, node, "uncheck");
+      break;
+    case "Select All Disks":
+      checkAllDisks(tree, node, "check");
+      break;
+    case "De-select All Disks":
+      checkAllDisks(tree, node, "uncheck");
+      break;
+  }
+}
 
-<div>
-  <div class="zTreeDemoBackground left">
-    <ul id="elements" class="ztree"></ul>
+/**
+ * check/un-check all children of a node recursively(self not included)
+ * @param {Object} tree easyui-tree.tree
+ * @param {Object} node easyui-tree.tree.node
+ * @param {String} check "check"/"uncheck"
+ */
+function checkAll(tree, node, check) {
+  /*if (tree.tree('isLeaf', node.target)) {
+    tree.tree(check, node.target);
+    return;
+  }
+  else {
+  */
+    var childNodes = tree.tree('getChildren', node.target);
+    for (var i in childNodes) {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  //}
+}
+
+function checkAllLuns(tree, node, check) {
+  var childNodes = tree.tree('getChildren', node.target);
+  for (var i in childNodes) {
+    if (childNodes[i].attribute == 'Lun') {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  }
+}
+
+function checkAllDisks(tree, node, check) {
+  var childNodes = tree.tree('getChildren', node.target);
+  for (var i in childNodes) {
+    if (childNodes[i].attribute == 'Disk') {
+      tree.tree(check, childNodes[i].target);
+      checkAll(tree, childNodes[i], check);
+    }
+  }
+}
+</script>
+
+<div region="west" split="true" border="false" style="width:25%"> 
+  <div class="easyui-layout" fit="true">
+    <div region="north" collapsible="false" split="true" border="false" style="height:50%">
+      <div id="elementsTabs" class="easyui-tabs" justified="true" narrow="true" style="height:100%">
+        <div title="LUN" style="padding:5px">
+          <ul id="luntree"></ul>
+            <SCRIPT type="text/javascript">
+              $('#luntree').tree({
+                data:<%- Luntree %>,
+                onlyLeafCheck:true,
+                onClick: function(node) {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });
+                }
+             });
+            </SCRIPT>
+        </div>
+        <div title="Storage Pool" style="padding:5px">
+          <ul id="pooltree"></ul>
+            <SCRIPT type="text/javascript">
+              $('#pooltree').tree({
+               data:<%- Pooltree %>,
+               onClick: function(node) {
+                if (node.attribute == 'Pool') {
+                  $('#attrtree').tree({
+                    data:[{
+                        "text":"FAST Cache Read Hits/s"
+                      },{
+                        "text":"FAST Cache Read Misses/s"
+                      },{
+                        "text":"FAST Cache Read Hit Ratio"
+                      },{
+                        "text":"FAST Cache Write Hits/s"
+                      },{
+                        "text":"FAST Cache Write Misses/s"
+                      },{
+                        "text":"FAST Cache Write Hit Ratio"
+                      }]
+                  });                
+                } else if (node.attribute == 'Lun') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });                
+                } else if (node.attribute == 'Disk') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Average Seek Distance (GB)"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });                       
+                }
+               }
+             });
+            </SCRIPT>
+        </div>
+        <div title="SP" style="padding:5px">
+          <ul id="sptree"></ul>
+            <SCRIPT type="text/javascript">
+              $('#sptree').tree({
+               data:<%- Sptree %>,
+               onClick: function(node) {
+                if (node.attribute == 'SP') {
+                  $('#attrtree').tree({
+                    data:[{
+                       "text":"Utilization (%)"
+                      },{
+                        "text":"Queue Length"
+                      },{
+                        "text":"Response Time (ms)"
+                      },{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"SP Cache Dirty Pages (%)"
+                      },{
+                        "text":"SP Cache Flush Ratio"
+                      },{
+                        "text":"SP Cache MBs Flushed (MB/s)"
+                      },{
+                        "text":"SP Cache High Water Flush On"
+                      },{
+                        "text":"SP Cache Idle Flush On"
+                      },{
+                        "text":"SP Cache Low Water Flush Off"
+                      },{
+                        "text":"SP Write Cache Flushes/s"
+                      },{
+                        "text":"FAST Cache Dirty Pages (%)"
+                      },{
+                        "text":"FAST Cache MBs Flushed (MB/s)"
+                      },{
+                        "text":"Average Busy Queue Length"
+                      },{
+                        "text":"Service Time (ms)"
+                      }]
+                  });
+                } else if (node.attribute == 'Port') {
+                  $('#attrtree').tree({
+                    data:[{
+                        "text":"Total Bandwidth (MB/s)"
+                      },{
+                        "text":"Total Throughput (IO/s)"
+                      },{
+                        "text":"Read Bandwidth (MB/s)"
+                      },{
+                        "text":"Read Size (KB)"
+                      },{
+                        "text":"Read Throughput (IO/s)"
+                      },{
+                        "text":"Write Bandwidth (MB/s)"
+                      },{
+                        "text":"Write Size (KB)"
+                      },{
+                        "text":"Write Throughput (IO/s)"
+                      },{
+                        "text":"Queue Full Count"
+                      }]
+                  });
+                }
+               }
+             });
+            </SCRIPT>
+        </div>
+      </div>
+ 
+    </div>
+
+    <div region="center" title="Attributes" style="padding:5px">
+        <ul id="attrtree"></ul>
+            <SCRIPT type="text/javascript">
+              $('#attrtree').tree({
+               data:[],
+               checkbox: true
+              });
+
+                function getChecked(){
+                  var nodes = $('#attrtree').tree('getChecked');
+                  var s = '';
+                  for(var i=0; i<nodes.length; i++){
+                    if (s != '') s += ',';
+                    s += nodes[i].text;
+                  }
+                  alert(s);
+                }
+
+            </SCRIPT>
+    </div>
   </div>
+</div>
 
-  <div class="zTreeDemoBackground left">
-    <ul id="attributes" class="ztree"></ul>
-  </div>
+<div region="center" split="true" style="width:80%;" title="Chart">
+  <div id="container" class="col-md-9" style="padding:10px;min-width:400px;min-height:600px;"></div>
+</div>
 
+<div id="simplemm" class="easyui-menu">
+  <!-- <div iconCls="icon-add">Expand</div> -->
+  <!-- <div iconCls="icon-remove">Collapse</div> -->
+  <!-- <div class="menu-sep"></div> -->
+  <div iconCls="icon-ok">Select All</div>
+  <div iconCls="icon-cancel">De-select All</div>
+</div>
+
+<div id="poolmm" class="easyui-menu">
+  <div iconCls="icon-ok">Select All LUNs</div>
+  <div iconCls="icon-cancel">De-select All LUNs</div>
+  <div iconCls="icon-ok">Select All Disks</div>
+  <div iconCls="icon-cancel">De-select All Disks</div>
 </div>
 
 
+</body>
 
-<!-- Metrics chart window -->
-<script src="/javascripts/Chart.js"></script>
-
-	
-	<div style="width:80%">
-		<div>
-			<canvas id="canvas" height="700" width="1200"></canvas>
-		</div>
-	</div>
-
-
-	<script type="text/javascript">
-		var utilization = <%- JSON.stringify(utilization) %>;
-		var pollTime = <%- JSON.stringify(pollTime) %>;
-		
-		var lineChartData = {
-			labels : pollTime,
-			datasets : [
-				{
-					label: "My First dataset",
-					fillColor : "rgba(220,220,220,0.2)",
-					strokeColor : "rgba(220,220,220,1)",
-					pointColor : "rgba(220,220,220,1)",
-					pointStrokeColor : "#fff",
-					pointHighlightFill : "#fff",
-					pointHighlightStroke : "rgba(220,220,220,1)",
-					data : utilization
-				}
-			]
-		}
-	window.onload = function(){
-		var ctx = document.getElementById("canvas").getContext("2d");
-		window.myLine = new Chart(ctx).Line(lineChartData, {
-			responsive: true
-		});
-	}
-	</script>
-
-<% include foot %>
+</html>

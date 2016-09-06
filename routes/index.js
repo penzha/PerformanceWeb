@@ -8,6 +8,7 @@ var exec = require('child_process').exec;
 //var execSync = require('child_process').execSync;  // better to use exec. 1.show 'analyzing' before naviseccli complete. 2. show 'analyzed' in callback 
 
 var xml2js = require('xml2js');
+var async = require('async');
 
 
 
@@ -102,43 +103,125 @@ router.post('/', function(req, res) {
   })
 })
 
+function GetLineName(obj, attr) {
+	var linename = new Array();
+	linename[0] = obj;
+	linename[1] = attr;
+	return linename.join();
+}
+
+function GetLineData(dbdata, attr) {
+	var linedata = new Array;
+	for (var k = 0; k < dbdata.length; k++) {
+		//console.log('attribute data: ', attr, dbdata[k][attr.toString()]);
+		linedata[k] = dbdata[k][attr.toString()];
+	}
+
+	return linedata;
+}
+
 router.get('/metrics', function(req, res) {
-	// add logic
-	//Metrics.getSummary(uploadFileName, function(err, narSummary) {
-	Metrics.getElements(uploadFileName, function(err, narSummary) {	
-		if (err) {
-            		//??
-            		console.log("getSummary from talbe " + uploadFileName + " failed");
-            		return res.redirect('/');
-            	}
+	if ((req.query.objects == null) && (req.query.attrs == null)) {
+		Metrics.getElements(uploadFileName, function(err, narSummary) {	
+			if (err) {
+	            		console.log("getSummary from talbe " + uploadFileName + " failed");
+	            		return res.redirect('/');
+	            	}
 
-		console.log('index.js - getSummary callback() ...');
-	
-		// use data model here?
-		var pollTime = [];
-		var utilization = [];
-		var sptree = narSummary.spjson;
-		var pooltree = narSummary.pooljson;
-		var luntree = narSummary.lunjson;
+			console.log('index.js - getSummary callback() ...');
+		
+			// use data model here?
+			var pollTime = [];
+			var sptree = narSummary.spjson;
+			var pooltree = narSummary.pooljson;
+			var luntree = narSummary.lunjson;
 
-		//console.log("index.js - sptree: ", sptree);
+			// get poll time
+			Metrics.getPollTime(uploadFileName, function(err, sampleSummary) {
+				if (err) {
+					//??
+				}
 
-		/*
-		for (var i = 0; i < narSummary.documents.length; i++) {
-			console.log('Poll Time[]: ' + narSummary.documents[i]["Poll Time"]);
-			console.log('utilization[]: ' + narSummary.documents[i]["Utilization (%)"]);
+				for (var i = 0; i < sampleSummary.length; i++) {
+					console.log('Poll Time[]: ' + sampleSummary[i]["Poll Time"]);
+					pollTime.push(sampleSummary[i]["Poll Time"]);
+				}
+				console.log("=========\n");
+				console.log(pollTime);
+				return res.render('metrics', { title: uploadFileName, Sptree: sptree, Pooltree:pooltree, Luntree:luntree, Pooltree:pooltree, PollTime: pollTime});
+			})
+		})
+	} else {
+		if ((req.query.objects != null) && (req.query.attrs != null)) {
+			console.log('=====================================================');
+			var objects = req.query.objects.split(',');
+			var attrs = req.query.attrs.split(',');
+			var chartdata = {};
+			var chartdata_index = 0;
 
-			pollTime.push(narSummary.documents[i]["Poll Time"]);
-			utilization.push(narSummary.documents[i]["Utilization (%)"]);
+			var max_query = objects.length * attrs.length;
+			console.log('max_query: ', max_query);
+			var count_query = 0;
+
+			for (var i = 0; i < objects.length; i++) {
+				console.log('objects.length: ', objects.length);
+				for (var j = 0; j < attrs.length; j++) {
+					console.log('attrs.length: ', attrs.length);
+
+					// retrieve mongodb and check whether valid query
+					//var object = unescape(objects[i]);
+					//var attr = unescape(attrs[j]);
+
+					//async.series([
+						Metrics.getData(uploadFileName, unescape(objects[i]), unescape(attrs[j]), function(err, object, attr, dbdata) {
+							if (err) {
+								//??
+							}
+
+						console.log('Retrieve from DB: ', dbdata);
+						console.log('query from mongodb via object-attr: ', object, attr);
+
+						console.log('count_query: ', count_query);
+
+						if (dbdata) {
+							console.log('valid pair and add to chartdata for front end');
+
+							var lineName = GetLineName(object, attr);
+							console.log('lineName: ', lineName);
+
+							var lineData = GetLineData(dbdata, attr);
+							console.log('lineData: ', lineData);
+
+							var line = {};
+							line['name'] = lineName;
+							line['data'] = lineData;
+
+							chartdata[chartdata_index] = line;
+							chartdata_index++;
+
+							console.log('chartdata: ', chartdata);
+							//res.send(chartdata);
+							//res.end();
+
+						} else {
+							console.log('No such metrics in DB');
+						}
+
+						if (count_query == max_query - 1) {
+							console.log('final chartdata: ', chartdata);
+							res.send(chartdata);
+							res.end();
+						}
+
+						count_query++;
+
+				})
+				//)])
+			}
+			}
+			
 		}
-		console.log("=========\n");
-		console.log(pollTime);
-		console.log(utilization);
-		*/
-		return res.render('metrics', { title: uploadFileName, Sptree: sptree, Pooltree:pooltree, Luntree:luntree, Pooltree:pooltree, PollTime: pollTime, Utilization: utilization});
-		//return res.render('metrics', { title: "Metrics View!!!"});
-
-	});
+	}
 
 	console.log('end of /metrics get');
 });
@@ -147,9 +230,17 @@ router.post('/metrics', function(req, res) {
 	console.log("metrics post");
 });
 
+router.get('/query', function(req, res) {
+
+	console.log('url params - objects: ', req.params['objects']);
+	console.log('url params - attrs: ', req.params['attrs']);
+	  
+	res.render(JSON.stringify({key:"value"}));
+});
+
 router.get('/TB', function(req, res) {
 	  res.render('TB', { title: "Thunderbird Metrics view" });
-	});
+});
 
 router.post('/TB', function(req, res) {
   var form = new formidable.IncomingForm();  // create upload form

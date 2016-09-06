@@ -11,15 +11,20 @@
 <link rel="stylesheet" type="text/css" href="/stylesheets/jquery-easyui-1.4.5/demo/demo.css">
 <script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.min.js"></script>
 <script type="text/javascript" src="/javascripts/jquery-easyui-1.4.5/jquery.easyui.min.js"></script>
+<script type="text/javascript" src="/javascripts/highcharts/highcharts.js"></script>
+
+<script src="/javascripts/highcharts/modules/exporting.js" type="text/javascript"></script> 
 
 </head>
 
 <body class="easyui-layout">
 
 <script type="text/javascript">
-var attr_selected = [];
+var attr_selected = []; // attributes selected
+var time = <%- JSON.stringify(PollTime) %>;  // NAR file poll time
 
 $(function() {
+  // get time stamps from NAR file
   $('ul[id*="tree"]').each(function() {
     $(this).tree({
       checkbox: function(node) {
@@ -57,26 +62,25 @@ $(function() {
         }
       },
       onCheck: function(node, checked) {
-        updateChart();
-      }
+        updateChart('container')      }
     })
   });
 
   $("#attrtree").tree({
     onLoadSuccess: function() {
       console.log('attrtree onLoadSuccess');
-      var types = attr_selected;
-      var type_count = types.length;
+      var attrs = attr_selected;
+      var attrs_count = attrs.length;
 
-      for (var i = 0; i < type_count; i++) {
+      for (var i = 0; i < attrs_count; i++) {
         var roots = $(this).tree('getRoots');
 
         console.log('roots.length: ', roots.length);
         for (var j = 0; j < roots.length; j++) {
-          //console.log('types text: ', types[i].text);
+          //console.log('attrs text: ', attrs[i].text);
           //console.log('roots text: ', roots[j].text);
 
-          if (roots[j].text == types[i].text) {
+          if (roots[j].text == attrs[i]) {
             $(this).tree('check', roots[j].target);
             console.log('check node: ', roots[j].text);
           }
@@ -85,34 +89,37 @@ $(function() {
     },
     onCheck: function(node, checked) {
       console.log('attrtree onCheck');
-      var types = attr_selected;
+      var attrs = attr_selected;
       var typeexist = false;
 
       if( !checked ) {
-        for (var i in types) {
-          if (types[i].text == node.text) {
-            types.splice(i, 1);
+        console.log('attr uncheck');
+        for (var i = 0; i < attrs.length; i++) {
+          //console.log('attrs[i]: ', attrs[i]);
+          //console.log('node.text: ', node.text);
+          if (attrs[i] == node.text) {
+            attrs.splice(i, 1);
             //console.log('remove node', node.text);
-            //console.log('attr_selected: ', types);
+            console.log('attr_selected: ', attr_selected);
             break;
           }
         }
       } else if ( checked ){
-        //$(this).tree('uncheck', types.shift().target);
+        //$(this).tree('uncheck', attrs.shift().target);
 
-        for (var j = 0; j < types.length; j++) {
-          if (types[j].text == node.text) 
+        for (var j = 0; j < attrs.length; j++) {
+          if (attrs[j] == node.text) 
             typeexist = true;
         }
         
         if (!typeexist) {
-          types.push(node);
-          //console.log('add node', node.text);
-          //console.log('attr_selected: ', types);
+          attrs.push(node.text);  // we only save node.text into global variable!
+          console.log('add node', node.text);
         }
+        console.log('attr_selected: ', attrs);
       }
 
-      updateChart();
+      updateChart('container')
     }
   })
 });
@@ -121,14 +128,148 @@ $(function() {
  * update chart
  */
 
-function updateChart() {
+function updateChart(container) {
   var objects = getObjects();
-  var attrs   = getAttrs();
+  //var attrs   = getAttrs();
+  var attrs = attr_selected;
+  var chart;
 
   console.log('objects: ', objects);
+  console.log('objects: ', objects.toString());
   console.log('attrs: ', attrs);
-  console.log('attr_selected: ', attr_selected);
+  console.log('attrs: ', attrs.toString());
 
+  console.log('polltime: ', time);
+  //console.log('attr_selected: ', attr_selected);
+  //console.log('attr_selected: ', attr_selected.toString());
+
+  if (0 == attrs.length) {
+    alert('Please select at least one metric attribute!');
+    return 0;
+  } else {
+    // destroy exist chart
+    if ($('#'+container).highcharts()) {
+      console.log('Destroy exist chart');
+      $('#'+container).highcharts().destroy();
+    }
+
+    // init chart
+    chart = initChart(container, attrs[0]);
+
+    // retrieving data
+    var fetch_size = 10;  // number of objects retrieves each time.
+    for (var i = 0; i * fetch_size < objects.length; i++) {
+      var object_selected = objects.slice(i * fetch_size, (i + 1) * fetch_size);
+
+      //console.log('object_selected: ', object_selected.toString());
+      //console.log('objects: ', objects.toString());
+
+      //var url = "http://192.168.85.131:3000/metrics?objects=" + object_selected.toString() + "&attrs=" + attrs.toString();
+      var url = "http://192.168.85.131:3000/metrics?objects=" + object_selected + "&attrs=" + attrs;
+
+      //add lines in chart
+      addLines(chart, url, i);
+    }
+
+  }
+}
+
+/**
+ * update metric type checkbox tree based on objects selected.
+ * @param {String} container container of chart
+ * @param {String} title title of chart
+ * @param {String} ytitle title of first yAxis
+ * @return {Object} Highcharts.Chart
+ */
+function initChart(container, ytitle) {
+  //$('#summary-table').css("display","none");
+  return new Highcharts.Chart({
+    chart: {
+      renderTo: container,
+      backgroundColor: {
+        linearGradient: [0, 0, 500, 500],
+        stops: [
+          [0, 'rgb(255, 255, 255)'],
+          [1, 'rgb(200, 200, 255)']
+        ]
+      },
+      type: 'line',
+      zoomType: "xy",
+      panning: true,
+      panKey: "shift"
+    },
+    title: {
+      text: 'Performance Chart'
+    },
+    xAxis: {
+      categories: time
+    },
+    yAxis: {
+      min: 0,
+      title: {
+        text: ytitle
+      },
+      id: 'first-axis'
+    },
+    tooltip: {
+      xDateFormat: "%e %b %Y, %H:%M:%S",
+      pointFormat: '<span style="color:{series.color}">●</span> {series.name}<br/>{series.yAxis.options.title.text}: {point.y}'
+    },
+    legend: {
+      backgroundColor: '#C8BFE7',
+      maxHeight: 170,
+      itemMarginTop: 2,
+      itemMarginButtom: 2,
+      itemWidth: 500,
+      itemHiddenStyle: {
+        color: '#7F7F7F'
+      },
+      itemHoverStyle: {
+        color: '#FF7F27'
+      },
+      layout: 'vertical',
+      //borderWidth: 1,
+      labelFormat: '<div style="width: 400px;float: left;overflow: hidden">{name}</div><div>{yAxis.options.title.text}</div>',
+      useHTML: true
+    },
+    plotOptions: {
+      series: {
+        //pointStart: Date.UTC(time["year"], time["month"], time["day"], time["hour"], time["minute"], time["second"]),
+        //pointInterval: time["interval"] * 1000
+      }
+    },
+    credits: {
+      enabled: false // remove high chart logo hyper-link
+    }
+  });
+
+}
+
+/**
+ * add Lines to chart
+ * @param chart Highchart.chart
+ * @param {String} url series data in JSON
+ */
+function addLines(chart, url, interval) {
+  setTimeout(function() {
+    $.getJSON(url, function (data) {
+      //var tmp = "[{name:'Pool_3', data: [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]}, {name:'Pool_2', data: [34.142952, 34.177093, 32.602308, 25.561682, 34.97002, 34.727382, 32.13746, 24.866517, 27.886792, 26.855924, 20.663539, 28.612271, 45.403027]}]";
+      //var data = {};
+      //data[0] = {'name':'Pool_3', 'data': [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]};
+      //data[1] = {'name':'Pool_2', 'data': [34.142952, 34.177093, 32.602308, 25.561682, 34.97002, 34.727382, 32.13746, 24.866517, 27.886792, 26.855924, 20.663539, 28.612271, 45.403027]};
+      //console.log('tmp: ', data);
+      //var data = JSON.stringify({data: "[44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]"});
+      console.log('getJSON data: ', data);
+      $.each(data, function (i, field) {
+        //var field = JSON.stringify({data: "[44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]"});
+        console.log('field: ', field);
+        //chart.addSeries(field, false);
+        //chart.addSeries({data: [44.142952, 44.177093, 42.602308, 35.561682, 44.97002, 44.727382, 42.13746, 34.866517, 37.886792, 36.855924, 30.663539, 38.612271, 55.403027]}, false);
+        chart.addSeries(field, false);
+      })
+      chart.redraw();
+    });
+  }, interval*1500);
 }
 
 /**
@@ -479,10 +620,8 @@ function checkAllDisks(tree, node, check) {
   </div>
 </div>
 
-<div region="center" title="Charts">
-  <!-- <p> SPTree: <%= Sptree %> </p> -->
-  <!-- <p> LunTree: <%= Luntree %> </p> -->
-  <!-- <p> PoolTree: <%= Pooltree %> </p> -->
+<div region="center" split="true" style="width:80%;" title="Chart">
+  <div id="container" class="col-md-9" style="padding:10px;min-width:400px;min-height:600px;"></div>
 </div>
 
 <div id="simplemm" class="easyui-menu">

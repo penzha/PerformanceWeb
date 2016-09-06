@@ -310,7 +310,7 @@ function CombinePoolFormat (lun, prg, disk) {	//whether mongodb has any way to g
 
 
 
-Metrics.getSummary = function (csvfile, callback) {
+Metrics.getPollTime = function (csvfile, callback) {
 	mongodb.open(function(err, db) {
 		if (err) {
 			return callback(err);
@@ -340,8 +340,8 @@ Metrics.getSummary = function (csvfile, callback) {
 				//console.log(polltime.values());  //Chrome/IE do not support Object.values(obj) yet.
 				
 				if (docs) {
-					var metrics = new Metrics(docs);
-					return callback(err, metrics);
+					//var metrics = new Metrics(docs);
+					return callback(err, docs);
 					
 				} else {
 					return callback(err, null);
@@ -355,6 +355,120 @@ Metrics.getSummary = function (csvfile, callback) {
 		});
 		
 		console.log('end of Metrics.getSummary');
+	});
+};
+
+Metrics.testdata = function (i, j, csvfile) {
+	var result = "result: " + i +"," + j + 'end;';
+	console.log('Metrics.test: ', result);
+
+	mongodb.open(function(err, db) {
+		if (err) {
+			return callback(err);
+		}
+	
+		console.log("open mongodb ...");
+		
+		var collectionName = path.basename(csvfile, '.nar');
+		console.log("Search collection: ", collectionName);
+		
+		db.collection(collectionName, {strict:true}, function(err, collection) {
+			if (err) {
+				db.close();
+				return callback(err);
+			}
+			
+			console.log("db.collection find " + collectionName);
+			
+			collection.find().sort(['Poll Time', 1]);
+			collection.find({"Object Name":"SP A"}, {"Poll Time":1, "Utilization (%)":1}).sort({"Poll Time":1}).toArray(function(err, docs) {
+				db.close();
+
+				console.log('find');
+				console.log(docs);
+				
+				//var polltime = JSON.stringify(docs, ["Poll Time"]);
+				//console.log(polltime.values());  //Chrome/IE do not support Object.values(obj) yet.
+				
+				if (docs) {
+					//var metrics = new Metrics(docs);
+					return result;
+					
+				} else {
+					return null;
+				}
+				
+
+			});
+			
+			console.log('after collection.find()');
+			
+		});
+		
+		console.log('end of Metrics.getSummary');
+	});
+};
+
+Metrics.result = function (i, j, callback) {
+	var result = "result: " + i +"," + j + 'end;';
+	console.log('Metrics.result: ', result);
+
+	return callback(err, result);
+};
+
+Metrics.getData = function (csvfile, object, attribute, callback) {
+	mongodb.open(function(err, db) {
+		if (err) {
+			return callback(err);
+		}
+	
+		console.log("open mongodb ...");
+		
+		var collectionName = path.basename(csvfile, '.nar');
+		console.log("Search collection: ", collectionName);
+		
+		db.collection(collectionName, {strict:true}, function(err, collection) {
+			if (err) {
+				db.close();
+				return callback(err);
+			}
+			
+			console.log("db.collection find " + collectionName);
+
+			console.log("object: ", object);
+			console.log("attribute: ", attribute);
+
+			//var attr = attribute.toString();
+			
+			collection.find().sort(['Poll Time', 1]);
+
+			var query = {};
+			query["Poll Time"] = 1;
+			query[attribute] = 1;
+			query["_id"] = 0;
+
+			// collection.find({"Object Name":object.toString()}, {"Utilization (%)":1, "Poll Time":1, "_id":0}).sort({"Poll Time":1}).toArray(function(err, docs) { ... } 
+			collection.find({"Object Name":object.toString()}, query).sort({"Poll Time":1}).toArray(function(err, docs) {
+				//db.close();
+
+				console.log('Metrics.getData: ', docs);
+				
+				//var polltime = JSON.stringify(docs, ["Poll Time"]);
+				//console.log(polltime.values());  //Chrome/IE do not support Object.values(obj) yet.
+				
+				if (docs) {
+					//var metrics = new Metrics(docs);
+					return callback(err, object, attribute, docs);
+					
+				} else {
+					return callback(err, null);
+				}
+				
+
+			});			
+		});
+		
+		console.log('end of Metrics.getData');
 	});
 };
 

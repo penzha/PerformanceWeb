@@ -18,6 +18,8 @@
     "connect-mongo" : "~0.7.0",
     "express-session": "~1.10.1",
     "connect-flash": "*",
-    "xmlreader":"*"
+    "xmlreader":"*",
+    "highcharts":"*",
+    "async":"*"
   }
 }

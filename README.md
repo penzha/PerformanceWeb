@@ -25,6 +25,8 @@ Created with [Nodeclipse](https://github.com/Nodeclipse/nodeclipse-1)
 
 Nodeclipse is free open-source project that grows with your contributions.
 
+
+
 # MongoDB layout
 Example - APM00114301765_SPA_2015-08-07_00-38-02-GMT_M05-00.nar
 
@@ -58,6 +60,9 @@ db 'performanceviewer' ->
 # MongoDB layout
 
 
+
+
+
 ### delete this
 //./mongoimport -v -d morningstar -c yahoo_profile_info -f ticker_symbol,company_name,phone,fax,address,website,index_membership,sector,industry,full_time_employees --type csv --file /tmp/yahoo_profile_info.csv
 
@@ -67,3 +72,44 @@ mongoimport --db local --collection metrics --type=csv --headerline --file *.csv
 >db.metrics.find({"Response Time (ms)": 9.952922})
 
 ### delete this
+
+
+
+
+*** TODO List ***
+- async control
+	access mongodb to get config xml file need to use async control to get better code structure. 
+	response for getjson need to use async control to return data to front end after we get data from mongodb
+
+- change 'LUN' tab to 'FastCache' tab. Show fast cache disks/luns performance. Do not support RG luns now.
+
+- support Fast Cache disks
+
+- Add summary/threshold for typical performance metrics and give alert on page
+	disk overload (different disk types)
+	high response time
+	high CPU utilization
+	queue full ?
+	....
+
+- mongoose
+
+- mongodb Map-Reduce
+
+- easyUI Lazy Load Tree Node (what this could faster webpage load?)
+- easyUI search box
+- 
+
+- Add known issue detection and alertion
+
+- bugfix:
+	select large configuration caused wrong result? dead loop?
+
+
+
+
+
+
+
+*** TODO List ***
+
